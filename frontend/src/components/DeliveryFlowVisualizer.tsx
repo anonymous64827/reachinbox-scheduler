@@ -79,29 +79,29 @@ export const DeliveryFlowVisualizer: React.FC<DeliveryFlowVisualizerProps> = ({
   ];
 
   return (
-    <div className="bg-[#0b1120] border border-slate-800/90 rounded-2xl p-5 mb-8 shadow-2xl relative overflow-hidden">
+    <div className="foundry-card rounded-2xl p-5 mb-8 relative overflow-hidden">
       {/* Decorative Technical Grid Overlay */}
-      <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] opacity-30 pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(rgba(245,158,11,0.12)_1px,transparent_1px)] [background-size:18px_18px] opacity-40 pointer-events-none" />
 
       {/* Header */}
-      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-4 border-b border-slate-800/80">
+      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-4 border-b border-amber-500/15">
         <div className="flex items-center space-x-2.5">
-          <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center shadow-[0_0_10px_rgba(245,158,11,0.15)]">
             <Layers className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200">
-                Live Lifecycle State Machine
+              <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-100">
+                Live State Lifecycle Engine
               </h3>
-              <span className="text-[10px] px-2 py-0.5 rounded-full font-mono bg-indigo-950 text-indigo-300 border border-indigo-800/60">
-                BullMQ + Redis Event Flow
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                BullMQ + Redis Pipeline
               </span>
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-zinc-400 font-mono">
               {selectedJob
-                ? `Inspecting Job: ${selectedJob.id.substring(0, 13)}... • Recipient: ${selectedJob.toEmail}`
-                : 'Click any email in the table below to inspect its live stage progression across Redis, Worker threads, and SMTP relays.'}
+                ? `Active Node: [${selectedJob.id.substring(0, 12)}...] • To: ${selectedJob.toEmail}`
+                : 'Select any outreach job below to inspect its live atomic progression across Redis, Worker threads, and SMTP relays.'}
             </p>
           </div>
         </div>
@@ -110,7 +110,7 @@ export const DeliveryFlowVisualizer: React.FC<DeliveryFlowVisualizerProps> = ({
           {selectedJob && onOpenTelemetry && (
             <button
               onClick={onOpenTelemetry}
-              className="text-[11px] font-medium text-indigo-300 hover:text-white px-2.5 py-1 rounded bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/30 transition-colors"
+              className="text-[11px] font-mono font-bold text-amber-300 hover:text-black px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-400 border border-amber-500/40 transition-all shadow-[0_0_12px_rgba(245,158,11,0.15)]"
             >
               Inspect Telemetry
             </button>
@@ -118,9 +118,9 @@ export const DeliveryFlowVisualizer: React.FC<DeliveryFlowVisualizerProps> = ({
           {selectedJob && onClearSelection && (
             <button
               onClick={onClearSelection}
-              className="text-[11px] text-slate-400 hover:text-white px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 transition-colors"
+              className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 transition-colors"
             >
-              Clear Selection
+              Clear
             </button>
           )}
         </div>
@@ -132,17 +132,17 @@ export const DeliveryFlowVisualizer: React.FC<DeliveryFlowVisualizerProps> = ({
           const { status, label } = getStepStatus(step.key);
           const Icon = step.icon;
 
-          let badgeColor = 'bg-slate-800/70 border-slate-700/60 text-slate-400';
-          let iconColor = 'text-slate-500';
+          let badgeColor = 'bg-zinc-900/80 border-zinc-800/80 text-zinc-500';
+          let iconColor = 'text-zinc-600';
           let ringPulse = '';
 
           if (status === 'completed') {
-            badgeColor = 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300';
+            badgeColor = 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.1)]';
             iconColor = 'text-emerald-400';
           } else if (status === 'active') {
-            badgeColor = 'bg-indigo-500/15 border-indigo-500/40 text-indigo-200';
-            iconColor = 'text-indigo-400';
-            ringPulse = 'ring-2 ring-indigo-500/30 animate-pulse';
+            badgeColor = 'bg-amber-500/15 border-amber-500/50 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.2)]';
+            iconColor = 'text-amber-400';
+            ringPulse = 'ring-2 ring-amber-500/40 animate-pulse';
           } else if (status === 'deferred') {
             badgeColor = 'bg-amber-500/15 border-amber-500/40 text-amber-300';
             iconColor = 'text-amber-400';
@@ -158,13 +158,13 @@ export const DeliveryFlowVisualizer: React.FC<DeliveryFlowVisualizerProps> = ({
             >
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] font-mono uppercase tracking-wider font-semibold text-slate-400">
-                    Step {index + 1}
+                  <span className="text-[10px] font-mono uppercase tracking-widest font-semibold text-zinc-400">
+                    0{index + 1}
                   </span>
                   <Icon className={`w-3.5 h-3.5 ${iconColor}`} />
                 </div>
-                <div className="text-xs font-bold text-slate-100">{step.title}</div>
-                <div className="text-[10px] text-slate-400 leading-tight mt-1 truncate" title={step.description}>
+                <div className="text-xs font-bold text-zinc-100">{step.title}</div>
+                <div className="text-[10px] text-zinc-400 leading-tight mt-1 truncate" title={step.description}>
                   {step.description}
                 </div>
               </div>

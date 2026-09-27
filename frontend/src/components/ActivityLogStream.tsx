@@ -65,9 +65,9 @@ export const ActivityLogStream: React.FC<ActivityLogStreamProps> = ({
   };
 
   return (
-    <div className="bg-[#080d1a] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl mb-8">
+    <div className="foundry-card rounded-2xl overflow-hidden shadow-2xl mb-8">
       {/* Console Header */}
-      <div className="px-5 py-3.5 border-b border-slate-800/80 bg-slate-950/70 flex items-center justify-between">
+      <div className="px-5 py-3.5 border-b border-amber-500/15 bg-zinc-950/90 flex items-center justify-between">
         <div className="flex items-center space-x-2.5">
           <div className="flex space-x-1.5 mr-1">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-500/80" />
@@ -75,9 +75,9 @@ export const ActivityLogStream: React.FC<ActivityLogStreamProps> = ({
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
           </div>
           <div className="flex items-center space-x-2">
-            <span className="text-xs font-mono font-bold text-slate-200">System Telemetry Stream</span>
-            <span className="flex items-center space-x-1 text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/50">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+            <span className="text-xs font-mono font-bold text-zinc-100 uppercase tracking-widest">Telemetry Stream</span>
+            <span className="flex items-center space-x-1 text-[10px] font-mono text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-500/30">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
               <span>LIVE</span>
             </span>
           </div>
@@ -85,22 +85,22 @@ export const ActivityLogStream: React.FC<ActivityLogStreamProps> = ({
 
         {/* Filter Buttons & Refresh */}
         <div className="flex items-center space-x-2">
-          <div className="hidden sm:flex items-center space-x-1 text-[10px] font-mono bg-slate-900 p-0.5 rounded-lg border border-slate-800">
+          <div className="hidden sm:flex items-center space-x-1 text-[10px] font-mono bg-zinc-900 p-0.5 rounded-lg border border-zinc-800">
             <button
               onClick={() => setFilter('all')}
-              className={`px-2 py-0.5 rounded ${filter === 'all' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+              className={`px-2 py-0.5 rounded ${filter === 'all' ? 'bg-amber-500 text-black font-bold' : 'text-zinc-400 hover:text-white'}`}
             >
               All ({events.length})
             </button>
             <button
               onClick={() => setFilter('success')}
-              className={`px-2 py-0.5 rounded ${filter === 'success' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
+              className={`px-2 py-0.5 rounded ${filter === 'success' ? 'bg-amber-500 text-black font-bold' : 'text-zinc-400 hover:text-white'}`}
             >
               Delivered
             </button>
             <button
               onClick={() => setFilter('warn')}
-              className={`px-2 py-0.5 rounded ${filter === 'warn' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white'}`}
+              className={`px-2 py-0.5 rounded ${filter === 'warn' ? 'bg-amber-500 text-black font-bold' : 'text-zinc-400 hover:text-white'}`}
             >
               Rate Limits
             </button>
@@ -108,7 +108,7 @@ export const ActivityLogStream: React.FC<ActivityLogStreamProps> = ({
 
           <button
             onClick={handleRefresh}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-amber-400 hover:bg-zinc-800 transition-colors"
             title="Poll Telemetry"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -117,19 +117,19 @@ export const ActivityLogStream: React.FC<ActivityLogStreamProps> = ({
       </div>
 
       {/* Log Feed */}
-      <div className="p-3.5 font-mono text-xs max-h-56 overflow-y-auto space-y-1.5 divide-y divide-slate-800/40">
+      <div className="p-3.5 font-mono text-xs max-h-56 overflow-y-auto space-y-1.5 divide-y divide-zinc-800/40 bg-[#09090d]/60">
         {filteredEvents.length === 0 ? (
-          <div className="py-6 text-center text-slate-500 text-xs">
+          <div className="py-6 text-center text-zinc-500 text-xs">
             Awaiting system events. Schedule an outreach campaign to view live BullMQ and SMTP events here.
           </div>
         ) : (
           filteredEvents.map((evt) => (
             <div
               key={evt.id}
-              className="pt-1.5 first:pt-0 flex items-start space-x-2.5 text-[11px] leading-relaxed group hover:bg-slate-900/40 px-2 py-1 rounded transition-colors"
+              className="pt-1.5 first:pt-0 flex items-start space-x-2.5 text-[11px] leading-relaxed group hover:bg-amber-500/5 px-2 py-1 rounded transition-colors"
             >
               {/* Time */}
-              <span className="text-slate-500 shrink-0 select-none">
+              <span className="text-zinc-600 group-hover:text-amber-400/70 shrink-0 select-none">
                 [{formatEventTime(evt.timestamp)}]
               </span>
 

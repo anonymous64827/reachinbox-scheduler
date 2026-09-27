@@ -30,16 +30,16 @@ export const JobDetailDrawer: React.FC<JobDetailDrawerProps> = ({ job, isOpen = 
   if (!isOpen || !job) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-lg bg-[#0c1222] border-l border-slate-800 h-full flex flex-col shadow-2xl text-slate-100 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="w-full max-w-lg bg-[#0a0a0f] border-l border-amber-500/20 h-full flex flex-col shadow-2xl text-zinc-100 overflow-y-auto">
         {/* Header */}
-        <div className="p-5 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between sticky top-0 z-10">
+        <div className="p-5 border-b border-amber-500/15 bg-zinc-950/90 flex items-center justify-between sticky top-0 z-10">
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono">
-                Job Telemetry
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 font-mono">
+                Foundry Telemetry
               </span>
-              <span className="text-xs font-mono text-slate-400 truncate max-w-[180px]">
+              <span className="text-xs font-mono text-zinc-400 truncate max-w-[180px]">
                 {job.id}
               </span>
             </div>
@@ -49,7 +49,7 @@ export const JobDetailDrawer: React.FC<JobDetailDrawerProps> = ({ job, isOpen = 
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-amber-400 hover:bg-zinc-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -58,17 +58,17 @@ export const JobDetailDrawer: React.FC<JobDetailDrawerProps> = ({ job, isOpen = 
         {/* Body Content */}
         <div className="p-6 space-y-6 flex-1 text-xs">
           {/* Status Badge Block */}
-          <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-zinc-950/80 border border-zinc-800 flex items-center justify-between">
             <div>
-              <span className="text-[10px] text-slate-400 uppercase font-mono">Execution Status</span>
-              <div className="text-sm font-bold text-white mt-0.5">{job.status}</div>
+              <span className="text-[10px] text-zinc-400 uppercase font-mono">Execution Status</span>
+              <div className="text-sm font-bold text-white mt-0.5 font-mono">{job.status}</div>
             </div>
             {job.etherealPreviewUrl && (
               <a
                 href={job.etherealPreviewUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-all shadow-sm"
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-500 text-black font-extrabold text-xs shadow-md shadow-amber-500/20 border border-amber-400/40 transition-all hover:brightness-110 active:scale-95"
               >
                 <span>View Email in Ethereal</span>
                 <ExternalLink className="w-3.5 h-3.5" />

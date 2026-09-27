@@ -187,7 +187,7 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-[#07070a] text-zinc-100 flex flex-col font-sans selection:bg-amber-500 selection:text-black">
       <Toaster position="top-right" richColors />
 
       {/* Navbar */}
@@ -207,21 +207,24 @@ export const App: React.FC = () => {
         {/* Header Hero Section */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              Email Outreach Engine
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1">
-              Persistent BullMQ job scheduling, Ethereal fake SMTP delivery, and sliding hourly rate limits.
+            <div className="flex items-center space-x-2">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_#f59e0b]" />
+              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                Foundry Outreach Core
+              </h2>
+            </div>
+            <p className="text-xs sm:text-sm text-zinc-400 mt-1">
+              Industrial BullMQ queue orchestration, fake Ethereal SMTP transmission, and sliding rate limit enforcement.
             </p>
           </div>
 
           {/* Primary Action Button */}
           <button
             onClick={() => setIsComposeOpen(true)}
-            className="flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition-all cursor-pointer group shrink-0"
+            className="flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-extrabold text-xs shadow-lg shadow-amber-500/20 border border-amber-400/30 transition-all cursor-pointer group shrink-0 active:scale-95"
           >
-            <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-200" />
-            <span>Compose New Email</span>
+            <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-200 stroke-[3]" />
+            <span className="tracking-wide">Compose New Campaign</span>
           </button>
         </div>
 
@@ -245,7 +248,7 @@ export const App: React.FC = () => {
         <StatsOverview stats={stats} onRefresh={fetchGlobalData} />
 
         {/* Navigation Tabs */}
-        <div className="flex items-center space-x-2 border-b border-slate-800 pb-3">
+        <div className="flex items-center space-x-2 border-b border-zinc-800 pb-3">
           <button
             onClick={() => {
               setActiveTab('scheduled');
@@ -253,13 +256,13 @@ export const App: React.FC = () => {
             }}
             className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'scheduled'
-                ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                ? 'bg-amber-500/15 text-amber-300 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.1)]'
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
             }`}
           >
-            <Calendar className="w-4 h-4" />
-            <span>Scheduled Emails</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 font-mono">
+            <Calendar className="w-4 h-4 text-amber-400" />
+            <span>Scheduled Pipeline</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] bg-zinc-900 border border-zinc-800 text-amber-400 font-mono font-semibold">
               {stats?.counts?.scheduled ?? 0}
             </span>
           </button>
@@ -271,13 +274,13 @@ export const App: React.FC = () => {
             }}
             className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'sent'
-                ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                ? 'bg-amber-500/15 text-amber-300 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.1)]'
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
             }`}
           >
-            <CheckCircle2 className="w-4 h-4" />
-            <span>Sent Emails</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 font-mono">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <span>Dispatched Log</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] bg-zinc-900 border border-zinc-800 text-emerald-400 font-mono font-semibold">
               {stats?.counts?.sent ?? 0}
             </span>
           </button>

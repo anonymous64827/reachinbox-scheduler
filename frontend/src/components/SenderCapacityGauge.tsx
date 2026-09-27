@@ -24,17 +24,17 @@ export const SenderCapacityGauge: React.FC<SenderCapacityGaugeProps> = ({
   };
 
   return (
-    <div className="bg-[#0b1120] border border-slate-800 rounded-2xl p-5 mb-8 shadow-xl">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-4 border-b border-slate-800/80">
+    <div className="foundry-card rounded-2xl p-5 mb-8 shadow-xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-4 border-b border-amber-500/15">
         <div className="flex items-center space-x-2.5">
-          <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center shadow-[0_0_10px_rgba(245,158,11,0.15)]">
             <Gauge className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200">
+            <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-100">
               Sender Sliding Window Capacity
             </h3>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-zinc-400 font-mono">
               Multi-worker safe atomic Redis counters. Jobs exceeding capacity automatically rollover to next window.
             </p>
           </div>
@@ -50,11 +50,11 @@ export const SenderCapacityGauge: React.FC<SenderCapacityGaugeProps> = ({
           const percentUsed = sender.percentUsed ?? Math.min(100, Math.round((count / limit) * 100));
           const isLimited = sender.isRateLimited ?? (count >= limit);
 
-          let barColor = 'bg-emerald-500';
-          let textColor = 'text-emerald-400';
+          let barColor = 'bg-gradient-to-r from-amber-600 to-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.3)]';
+          let textColor = 'text-amber-400';
           if (percentUsed >= 80 && percentUsed < 100) {
-            barColor = 'bg-amber-500';
-            textColor = 'text-amber-400';
+            barColor = 'bg-gradient-to-r from-yellow-500 to-amber-500';
+            textColor = 'text-yellow-400';
           } else if (percentUsed >= 100) {
             barColor = 'bg-rose-500 animate-pulse';
             textColor = 'text-rose-400';
@@ -66,14 +66,14 @@ export const SenderCapacityGauge: React.FC<SenderCapacityGaugeProps> = ({
               className={`p-4 rounded-xl border transition-all ${
                 isLimited
                   ? 'bg-rose-950/20 border-rose-500/30 ring-1 ring-rose-500/20'
-                  : 'bg-slate-900/60 border-slate-800/90'
+                  : 'bg-zinc-950/80 border-zinc-800/80 hover:border-amber-500/30'
               }`}
             >
               {/* Header */}
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <div className="text-xs font-bold text-white tracking-tight">{sender.name}</div>
-                  <div className="text-[10px] font-mono text-slate-400 mt-0.5 truncate max-w-[180px]">
+                  <div className="text-[10px] font-mono text-zinc-400 mt-0.5 truncate max-w-[180px]">
                     {sender.email}
                   </div>
                 </div>
@@ -81,7 +81,7 @@ export const SenderCapacityGauge: React.FC<SenderCapacityGaugeProps> = ({
                 <button
                   onClick={() => handleResetLimit(sender.email)}
                   title="Reset Redis hourly counter (Demo testing)"
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-300 hover:bg-slate-800 transition-colors"
+                  className="p-1.5 rounded-lg text-zinc-500 hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
                 >
                   <RotateCcw className="w-3 h-3" />
                 </button>
@@ -90,12 +90,12 @@ export const SenderCapacityGauge: React.FC<SenderCapacityGaugeProps> = ({
               {/* Meter */}
               <div className="my-2.5">
                 <div className="flex justify-between items-center text-[10px] font-mono mb-1">
-                  <span className="text-slate-400">Current Window:</span>
+                  <span className="text-zinc-400">Current Window:</span>
                   <span className={`font-bold ${textColor}`}>
                     {count} / {limit} ({percentUsed}%)
                   </span>
                 </div>
-                <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
+                <div className="w-full bg-[#08080c] rounded-full h-2 overflow-hidden border border-zinc-800">
                   <div
                     className={`h-full rounded-full transition-all duration-300 ${barColor}`}
                     style={{ width: `${percentUsed}%` }}
