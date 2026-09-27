@@ -1,8 +1,20 @@
-import express, { Request, Response } from 'express';
-import cors from 'cors';
 import dotenv from 'dotenv';
+dotenv.config();
+
 import path from 'path';
 import fs from 'fs';
+
+// Guarantee fallback DATABASE_URL if omitted in cloud env
+if (!process.env.DATABASE_URL) {
+  const rootDevDb = path.resolve(__dirname, '../../prisma/dev.db');
+  const backendDevDb = path.resolve(__dirname, '../prisma/dev.db');
+  const cwdDevDb = path.resolve(process.cwd(), 'prisma/dev.db');
+  const selectedDb = [rootDevDb, backendDevDb, cwdDevDb].find(p => fs.existsSync(p)) || rootDevDb;
+  process.env.DATABASE_URL = `file:${selectedDb}`;
+}
+
+import express, { Request, Response } from 'express';
+import cors from 'cors';
 import { connectDB } from './config/db';
 import { redisClient } from './config/redis';
 import { etherealService } from './services/ethereal.service';
@@ -15,8 +27,6 @@ import authRoutes from './routes/auth.routes';
 import emailRoutes from './routes/email.routes';
 import slackRoutes from './routes/slack.routes';
 import sendersRoutes from './routes/senders.routes';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;

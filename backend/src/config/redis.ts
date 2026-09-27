@@ -4,23 +4,41 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 function buildRedisOptions(): RedisOptions {
-  if (process.env.REDIS_URL) {
+  let rawUrl = process.env.REDIS_URL;
+  if (rawUrl && typeof rawUrl === 'string') {
+    rawUrl = rawUrl.trim();
+    // Remove wrapping quotes if entered with quotes
+    rawUrl = rawUrl.replace(/^["']+|["']+$/g, '');
+
+    // If user copied redis-cli command or extra flags: redis-cli --tls -u redis://...
+    if (rawUrl.includes('redis://') || rawUrl.includes('rediss://')) {
+      const match = rawUrl.match(/(rediss?:\/\/[^\s"']+)/);
+      if (match) {
+        rawUrl = match[1];
+      }
+    }
+
     try {
-      const parsed = new URL(process.env.REDIS_URL);
+      const parsed = new URL(rawUrl);
+      const isUpstash = parsed.hostname.includes('upstash.io');
+      const isTls = parsed.protocol === 'rediss:' || isUpstash;
+
+      console.log(`🔌 Detected cloud Redis endpoint: ${parsed.hostname}:${parsed.port || 6379} (TLS: ${isTls})`);
+
       return {
         host: parsed.hostname,
         port: parseInt(parsed.port || '6379', 10),
         password: parsed.password ? decodeURIComponent(parsed.password) : undefined,
         username: parsed.username ? decodeURIComponent(parsed.username) : undefined,
-        tls: parsed.protocol === 'rediss:' ? { rejectUnauthorized: false } : undefined,
+        tls: isTls ? { rejectUnauthorized: false } : undefined,
         maxRetriesPerRequest: null,
         enableReadyCheck: false,
         retryStrategy(times: number) {
           return Math.min(times * 100, 3000);
         },
       };
-    } catch (e) {
-      console.warn('⚠️ Could not parse REDIS_URL, falling back to standard options');
+    } catch (e: any) {
+      console.warn(`⚠️ Could not parse REDIS_URL (${rawUrl.slice(0, 25)}...):`, e.message);
     }
   }
 
