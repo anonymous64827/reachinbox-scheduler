@@ -10,9 +10,10 @@ Built for the **ReachInbox Software Development Intern Assignment** by **Purvi /
 
 | Service | Access Link | Notes |
 | :--- | :--- | :--- |
-| **Frontend Dashboard** | [http://localhost:3000](http://localhost:3000) or [https://fluffy-parks-change.loca.lt](https://fluffy-parks-change.loca.lt) | Tunnel password (if prompted): `122.171.20.223` |
-| **BullMQ Live Queue Monitor** | [http://localhost:5000/admin/queues](http://localhost:5000/admin/queues) | Real-time Bull Board UI |
-| **Backend REST API & Health** | [http://localhost:5000/api/health](http://localhost:5000/api/health) | Full health check & service status |
+| **Frontend Dashboard (Public Link)** | [https://says-reason-aged-infectious.trycloudflare.com](https://says-reason-aged-infectious.trycloudflare.com) | Accessible worldwide (no password required) |
+| **Local Frontend** | [http://localhost:3000](http://localhost:3000) | Local development dashboard |
+| **BullMQ Live Queue Monitor** | [https://says-reason-aged-infectious.trycloudflare.com/admin/queues](https://says-reason-aged-infectious.trycloudflare.com/admin/queues) | Real-time Bull Board UI |
+| **Backend REST API & Health** | [https://says-reason-aged-infectious.trycloudflare.com/api/health](https://says-reason-aged-infectious.trycloudflare.com/api/health) | Full health check & service status |
 
 ---
 
