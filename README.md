@@ -10,10 +10,10 @@ Built for the **ReachInbox Software Development Intern Assignment** by **Purvi /
 
 | Service | Access Link | Notes |
 | :--- | :--- | :--- |
-| **Frontend Dashboard (Public Link)** | [https://catch-promises-tropical-filtering.trycloudflare.com](https://catch-promises-tropical-filtering.trycloudflare.com) | Accessible worldwide (no password required) |
+| **Frontend Dashboard (24/7 Public Link)** | [https://reachinbox-scheduler-ck1z.onrender.com](https://reachinbox-scheduler-ck1z.onrender.com) | Live 24/7 cloud deployment (accessible worldwide) |
+| **BullMQ Live Queue Monitor** | [https://reachinbox-scheduler-ck1z.onrender.com/admin/queues](https://reachinbox-scheduler-ck1z.onrender.com/admin/queues) | Real-time Bull Board UI for queue inspection |
+| **Infrastructure Health Check** | [https://reachinbox-scheduler-ck1z.onrender.com/api/health](https://reachinbox-scheduler-ck1z.onrender.com/api/health) | Measured latency telemetry & service status |
 | **Local Frontend** | [http://localhost:3000](http://localhost:3000) | Local development dashboard |
-| **BullMQ Live Queue Monitor** | [https://catch-promises-tropical-filtering.trycloudflare.com/admin/queues](https://catch-promises-tropical-filtering.trycloudflare.com/admin/queues) | Real-time Bull Board UI |
-| **Backend REST API & Health** | [https://catch-promises-tropical-filtering.trycloudflare.com/api/health](https://catch-promises-tropical-filtering.trycloudflare.com/api/health) | Full health check & service status |
 
 ---
 
