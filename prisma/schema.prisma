@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  name         String?
+  avatar       String?
+  googleId     String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  emailJobs    EmailJob[]
+  slackConfigs SlackConfig[]
+}
+
+model EmailJob {
+  id                 String    @id @default(uuid())
+  toEmail            String
+  senderEmail        String
+  subject            String
+  body               String
+  status             String    @default("SCHEDULED") // SCHEDULED, PROCESSING, SENT, FAILED, RATE_LIMITED_RESCHEDULED, CANCELLED
+  scheduledTime      DateTime
+  sentTime           DateTime?
+  delaySeconds       Int       @default(2)
+  hourlyLimit        Int       @default(100)
+  attempts           Int       @default(0)
+  maxAttempts        Int       @default(3)
+  etherealPreviewUrl String?
+  etherealMessageId  String?
+  errorMessage       String?
+  bullJobId          String?
+  userId             String?
+  user               User?     @relation(fields: [userId], references: [id])
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([status])
+  @@index([scheduledTime])
+  @@index([senderEmail])
+}
+
+model SlackConfig {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  teamName    String?
+  channelName String?
+  webhookUrl  String?
+  accessToken String?
+  botUserId   String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Sender {
+  id          String   @id @default(uuid())
+  name        String
+  email       String   @unique
+  hourlyLimit Int      @default(100)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
