@@ -70,55 +70,55 @@ export const DeliveryFlowVisualizer: React.FC<DeliveryFlowVisualizerProps> = ({
   };
 
   const steps = [
-    { key: 'compose', title: '1. Intake', icon: FileEdit, description: 'Payload validation & DB record created' },
-    { key: 'scheduled', title: '2. BullMQ', icon: Calendar, description: 'Persistent delayed sorted-set in Redis' },
-    { key: 'worker', title: '3. Worker', icon: Cpu, description: 'Concurrency pool thread allocation' },
-    { key: 'ratelimit', title: '4. Rate Limiter', icon: ShieldCheck, description: 'Atomic hourly sliding window check' },
-    { key: 'smtp', title: '5. SMTP Relay', icon: Mail, description: 'Provider throttling & Ethereal handshake' },
-    { key: 'delivered', title: '6. Output', icon: CheckCircle2, description: 'Sent status, preview URL, ES update' },
+    { key: 'compose', title: 'Intake', icon: FileEdit, shortDesc: 'Payload Validated' },
+    { key: 'scheduled', title: 'BullMQ', icon: Calendar, shortDesc: 'Delayed ZSet' },
+    { key: 'worker', title: 'Worker', icon: Cpu, shortDesc: '5x Pool Thread' },
+    { key: 'ratelimit', title: 'Rate Limiter', icon: ShieldCheck, shortDesc: 'Sliding Window' },
+    { key: 'smtp', title: 'SMTP Relay', icon: Mail, shortDesc: 'Ethereal Wire' },
+    { key: 'delivered', title: 'Output', icon: CheckCircle2, shortDesc: 'Sent & Indexed' },
   ];
 
   return (
-    <div className="foundry-card rounded-2xl p-5 mb-8 relative overflow-hidden">
+    <div className="foundry-card rounded-2xl p-3.5 sm:p-4 mb-5 relative overflow-hidden">
       {/* Decorative Technical Grid Overlay */}
-      <div className="absolute inset-0 bg-[radial-gradient(rgba(245,158,11,0.12)_1px,transparent_1px)] [background-size:18px_18px] opacity-40 pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(rgba(245,158,11,0.1)_1px,transparent_1px)] [background-size:16px_16px] opacity-35 pointer-events-none" />
 
       {/* Header */}
-      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-4 border-b border-amber-500/15">
+      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 mb-3 border-b border-amber-500/15">
         <div className="flex items-center space-x-2.5">
-          <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center shadow-[0_0_10px_rgba(245,158,11,0.15)]">
-            <Layers className="w-4 h-4" />
+          <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center shadow-[0_0_8px_rgba(245,158,11,0.15)] shrink-0">
+            <Layers className="w-3.5 h-3.5" />
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center space-x-2">
               <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-100">
-                Live State Lifecycle Engine
+                Delivery Lifecycle Pipeline
               </h3>
-              <span className="text-[10px] px-2 py-0.5 rounded-full font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                BullMQ + Redis Pipeline
+              <span className="text-[9px] px-1.5 py-0.2 rounded-full font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                BullMQ State Machine
               </span>
             </div>
-            <p className="text-[11px] text-zinc-400 font-mono">
+            <p className="text-[11px] text-zinc-400 font-mono truncate">
               {selectedJob
-                ? `Active Node: [${selectedJob.id.substring(0, 12)}...] • To: ${selectedJob.toEmail}`
-                : 'Select any outreach job below to inspect its live atomic progression across Redis, Worker threads, and SMTP relays.'}
+                ? `Tracing: ${selectedJob.toEmail} • ID: ${selectedJob.id.substring(0, 8)}...`
+                : 'Click any email in the table below to trace its live state across Redis, Worker threads, and SMTP relays.'}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2 self-start sm:self-center">
+        <div className="flex items-center space-x-2 self-start sm:self-center shrink-0">
           {selectedJob && onOpenTelemetry && (
             <button
               onClick={onOpenTelemetry}
-              className="text-[11px] font-mono font-bold text-amber-300 hover:text-black px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-400 border border-amber-500/40 transition-all shadow-[0_0_12px_rgba(245,158,11,0.15)]"
+              className="text-[10px] font-mono font-bold text-amber-300 hover:text-black px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-400 border border-amber-500/40 transition-all shadow-sm"
             >
-              Inspect Telemetry
+              Inspect Details
             </button>
           )}
           {selectedJob && onClearSelection && (
             <button
               onClick={onClearSelection}
-              className="text-[11px] font-mono text-zinc-400 hover:text-zinc-100 px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 transition-colors"
+              className="text-[10px] font-mono text-zinc-400 hover:text-zinc-100 px-2 py-1 rounded bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 transition-colors"
             >
               Clear
             </button>
@@ -127,22 +127,22 @@ export const DeliveryFlowVisualizer: React.FC<DeliveryFlowVisualizerProps> = ({
       </div>
 
       {/* Visual State Pipeline Nodes */}
-      <div className="relative z-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="relative z-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5">
         {steps.map((step, index) => {
           const { status, label } = getStepStatus(step.key);
           const Icon = step.icon;
 
-          let badgeColor = 'bg-zinc-900/80 border-zinc-800/80 text-zinc-500';
+          let badgeColor = 'bg-zinc-950/70 border-zinc-800/80 text-zinc-500';
           let iconColor = 'text-zinc-600';
           let ringPulse = '';
 
           if (status === 'completed') {
-            badgeColor = 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.1)]';
+            badgeColor = 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 shadow-[0_0_8px_rgba(16,185,129,0.1)]';
             iconColor = 'text-emerald-400';
           } else if (status === 'active') {
-            badgeColor = 'bg-amber-500/15 border-amber-500/50 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.2)]';
+            badgeColor = 'bg-amber-500/15 border-amber-500/50 text-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.2)]';
             iconColor = 'text-amber-400';
-            ringPulse = 'ring-2 ring-amber-500/40 animate-pulse';
+            ringPulse = 'ring-1 ring-amber-500/50 animate-pulse';
           } else if (status === 'deferred') {
             badgeColor = 'bg-amber-500/15 border-amber-500/40 text-amber-300';
             iconColor = 'text-amber-400';
@@ -154,24 +154,23 @@ export const DeliveryFlowVisualizer: React.FC<DeliveryFlowVisualizerProps> = ({
           return (
             <div
               key={step.key}
-              className={`p-3 rounded-xl border transition-all duration-200 ${badgeColor} ${ringPulse} flex flex-col justify-between`}
+              className={`p-2.5 rounded-xl border transition-all duration-200 ${badgeColor} ${ringPulse} flex flex-col justify-between`}
             >
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] font-mono uppercase tracking-widest font-semibold text-zinc-400">
-                    0{index + 1}
-                  </span>
-                  <Icon className={`w-3.5 h-3.5 ${iconColor}`} />
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center space-x-1">
+                  <span className="text-[9px] font-mono text-zinc-500 font-bold">0{index + 1}</span>
+                  <span className="text-[11px] font-bold text-zinc-200 truncate">{step.title}</span>
                 </div>
-                <div className="text-xs font-bold text-zinc-100">{step.title}</div>
-                <div className="text-[10px] text-zinc-400 leading-tight mt-1 truncate" title={step.description}>
-                  {step.description}
-                </div>
+                <Icon className={`w-3 h-3 ${iconColor} shrink-0`} />
               </div>
 
-              <div className="mt-3 pt-2 border-t border-slate-800/60 flex items-center justify-between text-[10px] font-mono">
-                <span className="text-slate-400">Status:</span>
-                <span className="font-semibold text-slate-200 truncate max-w-[90px]">{label}</span>
+              <div className="flex items-center justify-between text-[10px] font-mono pt-1 border-t border-zinc-800/40 mt-1">
+                <span className="text-zinc-500 text-[9px] truncate max-w-[60px]">{step.shortDesc}</span>
+                <span className={`font-semibold text-[9px] truncate max-w-[70px] ${
+                  status === 'active' ? 'text-amber-400 font-bold' : status === 'completed' ? 'text-emerald-400' : 'text-zinc-400'
+                }`}>
+                  {label}
+                </span>
               </div>
             </div>
           );

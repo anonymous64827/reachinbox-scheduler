@@ -8,7 +8,7 @@ import { SentEmailsTable } from './components/SentEmailsTable';
 import { ComposeEmailModal } from './components/ComposeEmailModal';
 import { SlackIntegrationModal } from './components/SlackIntegrationModal';
 import { LoginView } from './components/LoginView';
-import { Plus, Calendar, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Plus, Calendar, CheckCircle2, RefreshCw, Activity } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import { SystemHealthBar } from './components/SystemHealthBar';
 import { DeliveryFlowVisualizer } from './components/DeliveryFlowVisualizer';
@@ -21,7 +21,7 @@ export const App: React.FC = () => {
   const [authChecking, setAuthChecking] = useState(true);
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<'scheduled' | 'sent'>('scheduled');
+  const [activeTab, setActiveTab] = useState<'scheduled' | 'sent' | 'observability'>('scheduled');
 
   // Modals & Drawer
   const [isComposeOpen, setIsComposeOpen] = useState(false);
@@ -80,19 +80,22 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  // Fetch Scheduled or Sent Emails
+  // Fetch Scheduled and Sent Emails
   const fetchEmails = useCallback(async () => {
     setLoading(true);
     try {
       if (searchQuery.trim()) {
-        const statusFilter = activeTab === 'scheduled' ? 'SCHEDULED' : 'SENT';
+        const statusFilter = activeTab === 'scheduled' ? 'SCHEDULED' : activeTab === 'sent' ? 'SENT' : undefined;
         const data = await api.searchEmails({ q: searchQuery.trim(), status: statusFilter });
         setSearchSource(data.source);
         const items = data.items;
         if (activeTab === 'scheduled') {
           setScheduledEmails(items);
-        } else {
+        } else if (activeTab === 'sent') {
           setSentEmails(items);
+        } else {
+          setScheduledEmails(items.filter((j) => j.status === 'SCHEDULED'));
+          setSentEmails(items.filter((j) => j.status === 'SENT'));
         }
         setSelectedJob((prev) => {
           if (!prev) return items[0] || null;
@@ -101,25 +104,18 @@ export const App: React.FC = () => {
         });
       } else {
         setSearchSource('');
-        if (activeTab === 'scheduled') {
-          const data = await api.getScheduledEmails();
-          const items = data.items;
-          setScheduledEmails(items);
-          setSelectedJob((prev) => {
-            if (!prev) return items[0] || null;
-            const found = items.find((j) => j.id === prev.id);
-            return found || prev;
-          });
-        } else {
-          const data = await api.getSentEmails();
-          const items = data.items;
-          setSentEmails(items);
-          setSelectedJob((prev) => {
-            if (!prev) return items[0] || null;
-            const found = items.find((j) => j.id === prev.id);
-            return found || prev;
-          });
-        }
+        const [schedData, sentData] = await Promise.all([
+          api.getScheduledEmails().catch(() => ({ items: [] })),
+          api.getSentEmails().catch(() => ({ items: [] })),
+        ]);
+        setScheduledEmails(schedData.items);
+        setSentEmails(sentData.items);
+        setSelectedJob((prev) => {
+          const allItems = [...schedData.items, ...sentData.items];
+          if (!prev) return allItems[0] || null;
+          const found = allItems.find((j) => j.id === prev.id);
+          return found || prev;
+        });
       }
     } catch (err: any) {
       toast.error('Failed to load email jobs: ' + err.message);
@@ -228,88 +224,123 @@ export const App: React.FC = () => {
           </button>
         </div>
 
-        {/* Signature Experience: Live Delivery Flow State Machine Visualizer */}
-        <DeliveryFlowVisualizer
-          job={selectedJob}
-          onOpenTelemetry={() => setIsDrawerOpen(true)}
-        />
-
-        {/* Operational Infrastructure Overview: Rate Limit Quota & Live Activity Telemetry */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1">
-            <SenderCapacityGauge senders={senders} onRefresh={fetchGlobalData} />
-          </div>
-          <div className="lg:col-span-2">
-            <ActivityLogStream />
-          </div>
-        </div>
-
         {/* Stats Overview */}
         <StatsOverview stats={stats} onRefresh={fetchGlobalData} />
 
         {/* Navigation Tabs */}
-        <div className="flex items-center space-x-2 border-b border-zinc-800 pb-3">
-          <button
-            onClick={() => {
-              setActiveTab('scheduled');
-              setSearchQuery('');
-            }}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'scheduled'
-                ? 'bg-amber-500/15 text-amber-300 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.1)]'
-                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-            }`}
-          >
-            <Calendar className="w-4 h-4 text-amber-400" />
-            <span>Scheduled Pipeline</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] bg-zinc-900 border border-zinc-800 text-amber-400 font-mono font-semibold">
-              {stats?.counts?.scheduled ?? 0}
-            </span>
-          </button>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 pb-3">
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => {
+                setActiveTab('scheduled');
+                setSearchQuery('');
+              }}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'scheduled'
+                  ? 'bg-amber-500/15 text-amber-300 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.1)]'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+              }`}
+            >
+              <Calendar className="w-4 h-4 text-amber-400" />
+              <span>Scheduled Pipeline</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-zinc-900 border border-zinc-800 text-amber-400 font-mono font-semibold">
+                {stats?.counts?.scheduled ?? scheduledEmails.length}
+              </span>
+            </button>
 
-          <button
-            onClick={() => {
-              setActiveTab('sent');
-              setSearchQuery('');
-            }}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'sent'
-                ? 'bg-amber-500/15 text-amber-300 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.1)]'
-                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-            }`}
-          >
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span>Dispatched Log</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] bg-zinc-900 border border-zinc-800 text-emerald-400 font-mono font-semibold">
-              {stats?.counts?.sent ?? 0}
-            </span>
-          </button>
+            <button
+              onClick={() => {
+                setActiveTab('sent');
+                setSearchQuery('');
+              }}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'sent'
+                  ? 'bg-amber-500/15 text-amber-300 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.1)]'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+              }`}
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <span>Dispatched Log</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-zinc-900 border border-zinc-800 text-emerald-400 font-mono font-semibold">
+                {stats?.counts?.sent ?? sentEmails.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('observability');
+              }}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'observability'
+                  ? 'bg-amber-500/15 text-amber-300 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.1)]'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+              }`}
+            >
+              <Activity className="w-4 h-4 text-amber-400" />
+              <span>Live Telemetry & Queues</span>
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+              </span>
+            </button>
+          </div>
         </div>
 
-        {/* Table View */}
-        {activeTab === 'scheduled' ? (
-          <ScheduledEmailsTable
-            emails={scheduledEmails}
-            loading={loading}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            onCancelEmail={handleCancelEmail}
-            onRefresh={fetchEmails}
-            searchSource={searchSource}
-            onSelectJob={(job) => setSelectedJob(job)}
-            selectedJobId={selectedJob?.id}
-          />
-        ) : (
-          <SentEmailsTable
-            emails={sentEmails}
-            loading={loading}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            onRefresh={fetchEmails}
-            searchSource={searchSource}
-            onSelectJob={(job) => setSelectedJob(job)}
-            selectedJobId={selectedJob?.id}
-          />
+        {/* Dynamic Tab Body */}
+        {activeTab === 'scheduled' && (
+          <div className="space-y-6">
+            <DeliveryFlowVisualizer
+              job={selectedJob}
+              onOpenTelemetry={() => setIsDrawerOpen(true)}
+            />
+            <ScheduledEmailsTable
+              emails={scheduledEmails}
+              loading={loading}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              onCancelEmail={handleCancelEmail}
+              onRefresh={fetchEmails}
+              searchSource={searchSource}
+              onSelectJob={(job) => setSelectedJob(job)}
+              selectedJobId={selectedJob?.id}
+            />
+          </div>
+        )}
+
+        {activeTab === 'sent' && (
+          <div className="space-y-6">
+            <DeliveryFlowVisualizer
+              job={selectedJob}
+              onOpenTelemetry={() => setIsDrawerOpen(true)}
+            />
+            <SentEmailsTable
+              emails={sentEmails}
+              loading={loading}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              onRefresh={fetchEmails}
+              searchSource={searchSource}
+              onSelectJob={(job) => setSelectedJob(job)}
+              selectedJobId={selectedJob?.id}
+            />
+          </div>
+        )}
+
+        {activeTab === 'observability' && (
+          <div className="space-y-6">
+            <DeliveryFlowVisualizer
+              job={selectedJob}
+              onOpenTelemetry={() => setIsDrawerOpen(true)}
+            />
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="lg:col-span-5">
+                <SenderCapacityGauge senders={senders} onRefresh={fetchGlobalData} />
+              </div>
+              <div className="lg:col-span-7">
+                <ActivityLogStream />
+              </div>
+            </div>
+          </div>
         )}
       </main>
 

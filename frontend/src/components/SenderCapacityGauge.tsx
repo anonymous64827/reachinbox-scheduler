@@ -41,8 +41,8 @@ export const SenderCapacityGauge: React.FC<SenderCapacityGaugeProps> = ({
         </div>
       </div>
 
-      {/* Senders Capacity Bars */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Senders Capacity List - Never wraps awkwardly or overflows */}
+      <div className="space-y-3">
         {senders.map((sender) => {
           const count = sender.currentHourCount || 0;
           const limit = sender.hourlyLimit || 50;
@@ -63,64 +63,62 @@ export const SenderCapacityGauge: React.FC<SenderCapacityGaugeProps> = ({
           return (
             <div
               key={sender.id}
-              className={`p-4 rounded-xl border transition-all ${
+              className={`p-3.5 rounded-xl border transition-all ${
                 isLimited
                   ? 'bg-rose-950/20 border-rose-500/30 ring-1 ring-rose-500/20'
                   : 'bg-zinc-950/80 border-zinc-800/80 hover:border-amber-500/30'
               }`}
             >
-              {/* Header */}
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <div className="text-xs font-bold text-white tracking-tight">{sender.name}</div>
-                  <div className="text-[10px] font-mono text-zinc-400 mt-0.5 truncate max-w-[180px]">
+              {/* Row Header */}
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-bold text-white tracking-tight truncate">{sender.name}</span>
+                    {isLimited && (
+                      <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 uppercase">
+                        Capped
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[10px] font-mono text-zinc-500 truncate">
                     {sender.email}
                   </div>
                 </div>
 
-                <button
-                  onClick={() => handleResetLimit(sender.email)}
-                  title="Reset Redis hourly counter (Demo testing)"
-                  className="p-1.5 rounded-lg text-zinc-500 hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                </button>
-              </div>
-
-              {/* Meter */}
-              <div className="my-2.5">
-                <div className="flex justify-between items-center text-[10px] font-mono mb-1">
-                  <span className="text-zinc-400">Current Window:</span>
-                  <span className={`font-bold ${textColor}`}>
-                    {count} / {limit} ({percentUsed}%)
+                <div className="flex items-center space-x-2 shrink-0">
+                  <span className={`text-xs font-mono font-bold ${textColor}`}>
+                    {count} <span className="text-zinc-600 font-normal">/</span> {limit}
+                    <span className="text-[10px] font-normal text-zinc-500 ml-1">({percentUsed}%)</span>
                   </span>
-                </div>
-                <div className="w-full bg-[#08080c] rounded-full h-2 overflow-hidden border border-zinc-800">
-                  <div
-                    className={`h-full rounded-full transition-all duration-300 ${barColor}`}
-                    style={{ width: `${percentUsed}%` }}
-                  />
+
+                  <button
+                    onClick={() => handleResetLimit(sender.email)}
+                    title="Reset Redis hourly counter (Demo testing)"
+                    className="p-1.5 rounded-lg text-zinc-500 hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
 
-              {/* Capacity Status */}
-              <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between text-[10px]">
-                {isLimited ? (
-                  <div className="flex items-center space-x-1 text-rose-400 font-semibold">
-                    <AlertTriangle className="w-3 h-3" />
-                    <span>Hourly Cap Hit • Deferring</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-1 text-slate-400 font-medium">
-                    <CheckCircle className="w-3 h-3 text-emerald-400" />
-                    <span>{remaining} slots available</span>
-                  </div>
-                )}
+              {/* Progress Bar */}
+              <div className="w-full bg-[#08080c] rounded-full h-1.5 overflow-hidden border border-zinc-800/80 my-2">
+                <div
+                  className={`h-full rounded-full transition-all duration-300 ${barColor}`}
+                  style={{ width: `${percentUsed}%` }}
+                />
+              </div>
 
-                <div className="flex items-center space-x-1 text-slate-400 font-mono text-[9px]">
-                  <Clock className="w-2.5 h-2.5 text-slate-400" />
-                  <span>Resets at :00</span>
-                </div>
+              {/* Footer Meta */}
+              <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500">
+                <span className="flex items-center space-x-1">
+                  {isLimited ? (
+                    <span className="text-rose-400 font-medium">⚠️ Rollover Active (Moved to next hour)</span>
+                  ) : (
+                    <span className="text-zinc-400">✓ {remaining} sends left in this hour</span>
+                  )}
+                </span>
+                <span className="text-zinc-600">Resets at :00</span>
               </div>
             </div>
           );
