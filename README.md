@@ -10,10 +10,10 @@ Built for the **ReachInbox Software Development Intern Assignment** by **Purvi /
 
 | Service | Access Link | Notes |
 | :--- | :--- | :--- |
-| **Frontend Dashboard (Public Link)** | [https://says-reason-aged-infectious.trycloudflare.com](https://says-reason-aged-infectious.trycloudflare.com) | Accessible worldwide (no password required) |
+| **Frontend Dashboard (Public Link)** | [https://catch-promises-tropical-filtering.trycloudflare.com](https://catch-promises-tropical-filtering.trycloudflare.com) | Accessible worldwide (no password required) |
 | **Local Frontend** | [http://localhost:3000](http://localhost:3000) | Local development dashboard |
-| **BullMQ Live Queue Monitor** | [https://says-reason-aged-infectious.trycloudflare.com/admin/queues](https://says-reason-aged-infectious.trycloudflare.com/admin/queues) | Real-time Bull Board UI |
-| **Backend REST API & Health** | [https://says-reason-aged-infectious.trycloudflare.com/api/health](https://says-reason-aged-infectious.trycloudflare.com/api/health) | Full health check & service status |
+| **BullMQ Live Queue Monitor** | [https://catch-promises-tropical-filtering.trycloudflare.com/admin/queues](https://catch-promises-tropical-filtering.trycloudflare.com/admin/queues) | Real-time Bull Board UI |
+| **Backend REST API & Health** | [https://catch-promises-tropical-filtering.trycloudflare.com/api/health](https://catch-promises-tropical-filtering.trycloudflare.com/api/health) | Full health check & service status |
 
 ---
 
