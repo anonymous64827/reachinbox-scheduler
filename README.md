@@ -21,31 +21,31 @@ Built for the **ReachInbox Software Development Intern Assignment** by **Purvi /
 
 ```mermaid
 flowchart TD
-    Client["React / Next.js Dashboard<br/>(Tailwind CSS + Lucide)"]
+    Client["React Dashboard<br/>(Tailwind CSS + Lucide)"]
     API["Express.js REST API<br/>(TypeScript)"]
-    DB[("Relational Database<br/>PostgreSQL / SQLite (Prisma ORM)")]
-    Redis[("Redis Cluster / Server<br/>(Delayed Jobs & Sliding Window Counters)")]
+    DB[("Relational Database<br/>PostgreSQL / SQLite")]
+    Redis[("Redis Cluster / Cloud<br/>(Delayed Jobs & Sliding Window Counters)")]
     BullMQ["BullMQ Queue<br/>('email-queue')"]
-    Worker["BullMQ Worker<br/>(Configurable Concurrency = 5)"]
-    SMTP["Ethereal Fake SMTP<br/>(Nodemailer Transporter)"]
+    Worker["BullMQ Worker<br/>(Concurrency: 5)"]
+    SMTP["Ethereal Fake SMTP<br/>(Nodemailer Relay)"]
     ES["Elasticsearch Engine<br/>(Multi-match search with DB Fallback)"]
-    Slack["Slack API / Webhooks<br/>(Rate Limit Exceeded Live Alerts)"]
+    Slack["Slack API / Webhooks<br/>(Rate Limit Alerts)"]
 
-    Client -->|1. Schedule batch / CSV| API
-    API -->|2. Persist record (SCHEDULED)| DB
-    API -->|3. Index searchable document| ES
-    API -->|4. Add delayed job (Idempotent JobId)| BullMQ
-    BullMQ -->|Backing storage| Redis
+    Client -->|"1. Schedule batch or CSV"| API
+    API -->|"2. Persist record - SCHEDULED"| DB
+    API -->|"3. Index searchable document"| ES
+    API -->|"4. Add delayed job with idempotent JobId"| BullMQ
+    BullMQ -->|"Backing storage"| Redis
 
-    Worker -->|5. Poll delayed queue when due| BullMQ
-    Worker -->|6. Atomic rate-limit check (INCR/EXPIRE)| Redis
-    Worker -->|7a. If limit exceeded: Reschedule & Notify| Slack
-    Worker -->|7b. If allowed: Throttling delay (min 2s)| Worker
-    Worker -->|8. Dispatch email via SMTP| SMTP
-    SMTP -->|9. Returns previewUrl & messageId| Worker
-    Worker -->|10. Mark SENT & record previewUrl| DB
-    Worker -->|11. Update indexed document| ES
-    Client -->|12. Real-time updates & Bull Board| API
+    Worker -->|"5. Poll delayed queue when due"| BullMQ
+    Worker -->|"6. Atomic rate-limit check via Redis"| Redis
+    Worker -->|"7a. If limit exceeded: Reschedule and Notify"| Slack
+    Worker -->|"7b. If allowed: Throttling delay min 2s"| Worker
+    Worker -->|"8. Dispatch email via SMTP"| SMTP
+    SMTP -->|"9. Return previewUrl and messageId"| Worker
+    Worker -->|"10. Mark SENT and record previewUrl"| DB
+    Worker -->|"11. Update indexed document"| ES
+    Client -->|"12. Real-time telemetry and Bull Board"| API
 ```
 
 ---
