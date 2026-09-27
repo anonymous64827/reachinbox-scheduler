@@ -173,29 +173,30 @@ async function bootstrap() {
   console.log('----------------------------------------------------');
 
   try {
-    // 1. Connect Relational Database
-    await connectDB();
-
-    // 2. Initialize Ethereal SMTP
-    await etherealService.init();
-
-    // 3. Initialize Elasticsearch (with graceful fallback)
-    await elasticsearchService.init();
-
-    // 4. Start BullMQ Background Worker
-    initEmailWorker();
-
-    // 5. Reconcile jobs for restart persistence
-    await reconcilePendingJobsOnStartup();
-
-    // 6. Start HTTP Server
-    app.listen(PORT, () => {
+    // 1. Start HTTP Server immediately on 0.0.0.0 so cloud port scanners detect it
+    const portNumber = parseInt(String(PORT), 10) || 5000;
+    app.listen(portNumber, '0.0.0.0', () => {
       console.log(`\n====================================================`);
-      console.log(`🎉 ReachInbox Backend Running on http://localhost:${PORT}`);
-      console.log(`📊 BullMQ Live Queue Dashboard: http://localhost:${PORT}/admin/queues`);
-      console.log(`🩺 Health Check: http://localhost:${PORT}/api/health`);
+      console.log(`🎉 ReachInbox Service is LIVE on http://0.0.0.0:${portNumber}`);
+      console.log(`📊 BullMQ Live Queue Dashboard: /admin/queues`);
+      console.log(`🩺 Health Check: /api/health`);
       console.log(`====================================================\n`);
     });
+
+    // 2. Connect Relational Database
+    await connectDB();
+
+    // 3. Initialize Ethereal SMTP
+    await etherealService.init();
+
+    // 4. Initialize Elasticsearch (with graceful fallback)
+    await elasticsearchService.init();
+
+    // 5. Start BullMQ Background Worker
+    initEmailWorker();
+
+    // 6. Reconcile jobs for restart persistence
+    await reconcilePendingJobsOnStartup();
   } catch (error: any) {
     console.error('Fatal initialization error:', error);
     process.exit(1);
