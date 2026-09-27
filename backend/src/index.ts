@@ -1,6 +1,8 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
 import { connectDB } from './config/db';
 import { redisClient } from './config/redis';
 import { etherealService } from './services/ethereal.service';
@@ -110,22 +112,49 @@ app.get('/api/health', async (_req: Request, res: Response) => {
   });
 });
 
-// Root welcome route
-app.get('/', (_req: Request, res: Response) => {
-  res.json({
-    name: 'ReachInbox Email Job Scheduler API',
-    version: '1.0.0',
-    documentation: {
-      bullBoard: `/admin/queues`,
-      health: `/api/health`,
-      schedule: `POST /api/emails/schedule`,
-      scheduled: `GET /api/emails/scheduled`,
-      sent: `GET /api/emails/sent`,
-      search: `GET /api/emails/search`,
-      slackStatus: `GET /api/slack/status`,
-    },
+// Static frontend serving for production / cloud deployment
+const candidateDistPaths = [
+  path.resolve(__dirname, '../../frontend/dist'),
+  path.resolve(__dirname, '../frontend/dist'),
+  path.resolve(__dirname, './public'),
+  path.resolve(process.cwd(), 'frontend/dist'),
+];
+
+let resolvedDistPath: string | null = null;
+for (const p of candidateDistPaths) {
+  if (fs.existsSync(p) && fs.existsSync(path.join(p, 'index.html'))) {
+    resolvedDistPath = p;
+    break;
+  }
+}
+
+if (resolvedDistPath) {
+  console.log(`📦 Serving compiled frontend from: ${resolvedDistPath}`);
+  app.use(express.static(resolvedDistPath));
+  app.get('*', (req: Request, res: Response, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/admin') || req.path.startsWith('/socket.io')) {
+      return next();
+    }
+    res.sendFile(path.join(resolvedDistPath!, 'index.html'));
   });
-});
+} else {
+  // Root welcome route if frontend is hosted separately
+  app.get('/', (_req: Request, res: Response) => {
+    res.json({
+      name: 'ReachInbox Email Job Scheduler API',
+      version: '1.0.0',
+      documentation: {
+        bullBoard: `/admin/queues`,
+        health: `/api/health`,
+        schedule: `POST /api/emails/schedule`,
+        scheduled: `GET /api/emails/scheduled`,
+        sent: `GET /api/emails/sent`,
+        search: `GET /api/emails/search`,
+        slackStatus: `GET /api/slack/status`,
+      },
+    });
+  });
+}
 
 // Bootstrap server
 async function bootstrap() {

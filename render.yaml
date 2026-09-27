@@ -1,0 +1,27 @@
+services:
+  # Full-Stack ReachInbox Application (Serves React Frontend + Express/BullMQ Backend)
+  - type: web
+    name: reachinbox-email-scheduler
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm run postinstall && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        value: file:./dev.db
+      - key: JWT_SECRET
+        generateValue: true
+      - key: WORKER_CONCURRENCY
+        value: 5
+      - key: MIN_DELAY_BETWEEN_EMAILS_SECONDS
+        value: 2
+      - key: DEFAULT_HOURLY_LIMIT
+        value: 50
+      # Connect your free Upstash Redis URL here:
+      - key: REDIS_URL
+        sync: false
