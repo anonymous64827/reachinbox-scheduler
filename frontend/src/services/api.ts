@@ -66,14 +66,29 @@ export const api = {
     if (file) {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await apiClient.post<{ success: boolean; count: number; sample: string[]; emails: string[] }>('/emails/parse-csv', formData, {
+      const res = await apiClient.post<import('../types').CsvDiagnostics>('/emails/parse-csv', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       return res.data;
     } else {
-      const res = await apiClient.post<{ success: boolean; count: number; sample: string[]; emails: string[] }>('/emails/parse-csv', { text });
+      const res = await apiClient.post<import('../types').CsvDiagnostics>('/emails/parse-csv', { text });
       return res.data;
     }
+  },
+
+  getActivity: async () => {
+    const res = await apiClient.get<import('../types').ActivityEvent[]>('/emails/activity');
+    return res.data;
+  },
+
+  getJobTelemetry: async (id: string) => {
+    const res = await apiClient.get<import('../types').JobTelemetry>(`/emails/telemetry/${id}`);
+    return res.data;
+  },
+
+  getHealth: async () => {
+    const res = await apiClient.get<import('../types').SystemHealthData>('/health');
+    return res.data;
   },
 
   getStats: async () => {

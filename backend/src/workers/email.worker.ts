@@ -6,6 +6,7 @@ import { prisma } from '../config/db';
 import { etherealService } from '../services/ethereal.service';
 import { rateLimitService } from '../services/ratelimit.service';
 import { elasticsearchService } from '../services/elasticsearch.service';
+import { activityService } from '../services/activity.service';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -44,6 +45,17 @@ export function initEmailWorker() {
         return { status: 'SKIPPED_CANCELLED' };
       }
 
+      // Record Worker Acquisition Event
+      await activityService.record({
+        level: 'info',
+        type: 'WORKER_ACQUIRED',
+        jobId: data.jobRecordId,
+        sender: data.senderEmail,
+        recipient: data.toEmail,
+        message: `Worker acquired job for ${data.toEmail} (Attempt ${record.attempts + 1}/${record.maxAttempts || 3})`,
+        metadata: { jobId: job.id, attempt: record.attempts + 1 },
+      });
+
       // Mark status as PROCESSING in DB
       await prisma.emailJob.update({
         where: { id: data.jobRecordId },
@@ -54,7 +66,8 @@ export function initEmailWorker() {
       const rateLimitResult = await rateLimitService.checkAndIncrement(
         data.senderEmail,
         data.hourlyLimit,
-        record.userId || undefined
+        record.userId || undefined,
+        data.jobRecordId
       );
 
       if (!rateLimitResult.allowed) {
@@ -100,6 +113,15 @@ export function initEmailWorker() {
 
       // 4. Send Email via Ethereal SMTP
       try {
+        await activityService.record({
+          level: 'info',
+          type: 'SMTP_DISPATCHING',
+          jobId: data.jobRecordId,
+          sender: data.senderEmail,
+          recipient: data.toEmail,
+          message: `Transmitting via Ethereal SMTP transporter to ${data.toEmail}...`,
+        });
+
         const sendResult = await etherealService.sendEmail({
           from: data.senderName ? `"${data.senderName}" <${data.senderEmail}>` : data.senderEmail,
           to: data.toEmail,
@@ -128,6 +150,16 @@ export function initEmailWorker() {
           etherealPreviewUrl: sendResult.previewUrl,
         });
 
+        await activityService.record({
+          level: 'success',
+          type: 'EMAIL_DELIVERED',
+          jobId: data.jobRecordId,
+          sender: data.senderEmail,
+          recipient: data.toEmail,
+          message: `Delivered to ${data.toEmail}. SMTP ID: ${sendResult.messageId.substring(0, 18)}...`,
+          metadata: { previewUrl: sendResult.previewUrl, messageId: sendResult.messageId },
+        });
+
         console.log(`🎉 [Job ${job.id}] Successfully dispatched email to ${data.toEmail}`);
         return {
           status: 'SENT',
@@ -152,6 +184,16 @@ export function initEmailWorker() {
         await elasticsearchService.updateEmailStatus(data.jobRecordId, {
           status: isFinalAttempt ? 'FAILED' : 'SCHEDULED',
           errorMessage: sendError.message,
+        });
+
+        await activityService.record({
+          level: 'error',
+          type: 'JOB_RETRY',
+          jobId: data.jobRecordId,
+          sender: data.senderEmail,
+          recipient: data.toEmail,
+          message: `Send error: ${sendError.message} (Attempt ${currentAttempts}/${record.maxAttempts || 3})`,
+          metadata: { error: sendError.message, isFinalAttempt },
         });
 
         throw sendError; // Let BullMQ handle automatic retry if configured

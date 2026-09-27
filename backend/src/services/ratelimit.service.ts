@@ -1,6 +1,7 @@
 import { redisClient } from '../config/redis';
 import { slackService } from './slack.service';
 import { prisma } from '../config/db';
+import { activityService } from './activity.service';
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -8,6 +9,17 @@ export interface RateLimitResult {
   limit: number;
   nextWindowTime: Date;
   delayUntilNextWindowMs: number;
+}
+
+export interface SenderCapacityStatus {
+  email: string;
+  count: number;
+  limit: number;
+  remaining: number;
+  percentUsed: number;
+  isRateLimited: boolean;
+  nextWindowTime: string;
+  slackAlertSent: boolean;
 }
 
 export class RateLimitService {
@@ -56,7 +68,7 @@ export class RateLimitService {
    * Atomically checks and increments the sender's hourly email count in Redis.
    * If limit is exceeded, returns allowed: false and triggers Slack notification once per window.
    */
-  async checkAndIncrement(senderEmail: string, customLimit?: number, userId?: string): Promise<RateLimitResult> {
+  async checkAndIncrement(senderEmail: string, customLimit?: number, userId?: string, jobRecordId?: string): Promise<RateLimitResult> {
     const now = new Date();
     const { key, windowStr } = this.getWindowKey(senderEmail, now);
     const { nextWindowTime, delayMs } = this.getNextWindow(now);
@@ -71,15 +83,23 @@ export class RateLimitService {
     }
 
     if (currentCount > limit) {
-      // Threshold exceeded!
-      // Send Slack alert once per hour window for this sender
+      // Record telemetry event in activity stream
+      await activityService.record({
+        level: 'warn',
+        type: 'RATE_LIMIT_DEFERRED',
+        sender: senderEmail,
+        jobId: jobRecordId,
+        message: `Sender ${senderEmail} exceeded hourly limit (${currentCount}/${limit}). Job deferred to ${nextWindowTime.toUTCString()}.`,
+        metadata: { currentCount, limit, nextWindowTime: nextWindowTime.toISOString() },
+      });
+
+      // Threshold exceeded! Send Slack alert once per hour window for this sender
       const slackAlertKey = `ratelimit:slack_notified:${senderEmail.toLowerCase()}:${windowStr}`;
       const firstNotification = await redisClient.set(slackAlertKey, '1', 'EX', 7200, 'NX');
 
       if (firstNotification === 'OK') {
         console.warn(`🚨 Rate limit exceeded for sender ${senderEmail} (${currentCount}/${limit} emails this hour). Rescheduling to ${nextWindowTime.toISOString()}. Triggering Slack notification...`);
         
-        // Asynchronously notify Slack (won't block worker)
         slackService.notifyRateLimitHit(
           {
             senderEmail,
@@ -89,7 +109,16 @@ export class RateLimitService {
             rescheduledToTime: nextWindowTime.toUTCString(),
           },
           userId
-        ).catch((err) => {
+        ).then((delivered) => {
+          if (delivered) {
+            activityService.record({
+              level: 'info',
+              type: 'SLACK_NOTIFIED',
+              sender: senderEmail,
+              message: `Live Slack rate-limit alert dispatched for sender ${senderEmail}`,
+            });
+          }
+        }).catch((err) => {
           console.error('Slack notification dispatch error:', err.message);
         });
       }
@@ -102,6 +131,16 @@ export class RateLimitService {
         delayUntilNextWindowMs: delayMs,
       };
     }
+
+    // Normal pass activity event
+    await activityService.record({
+      level: 'info',
+      type: 'RATE_LIMIT_CHECK',
+      sender: senderEmail,
+      jobId: jobRecordId,
+      message: `Rate limit check PASS for ${senderEmail}: ${currentCount}/${limit} slots used`,
+      metadata: { currentCount, limit },
+    });
 
     return {
       allowed: true,
@@ -116,8 +155,9 @@ export class RateLimitService {
    * Resets rate limit for a sender (useful for testing and demos).
    */
   async resetSenderRateLimit(senderEmail: string): Promise<void> {
-    const { key } = this.getWindowKey(senderEmail);
-    await redisClient.del(key);
+    const { key, windowStr } = this.getWindowKey(senderEmail);
+    const slackAlertKey = `ratelimit:slack_notified:${senderEmail.toLowerCase()}:${windowStr}`;
+    await redisClient.del(key, slackAlertKey);
     console.log(`🔄 Reset rate limit counter for ${senderEmail}`);
   }
 
@@ -131,6 +171,36 @@ export class RateLimitService {
     const limit = await this.getSenderHourlyLimit(senderEmail);
     return { count, limit };
   }
+
+  /**
+   * Computes complete real-time sender capacity state for visual operator gauges.
+   */
+  async getSenderCapacityStatus(senderEmail: string): Promise<SenderCapacityStatus> {
+    const now = new Date();
+    const { key, windowStr } = this.getWindowKey(senderEmail, now);
+    const { nextWindowTime } = this.getNextWindow(now);
+    const countStr = await redisClient.get(key);
+    const count = countStr ? parseInt(countStr, 10) : 0;
+    const limit = await this.getSenderHourlyLimit(senderEmail);
+    const remaining = Math.max(0, limit - count);
+    const percentUsed = Math.min(100, Math.round((count / limit) * 100));
+    const isRateLimited = count >= limit;
+
+    const slackAlertKey = `ratelimit:slack_notified:${senderEmail.toLowerCase()}:${windowStr}`;
+    const slackAlertSent = (await redisClient.get(slackAlertKey)) === '1';
+
+    return {
+      email: senderEmail,
+      count,
+      limit,
+      remaining,
+      percentUsed,
+      isRateLimited,
+      nextWindowTime: nextWindowTime.toISOString(),
+      slackAlertSent,
+    };
+  }
 }
 
 export const rateLimitService = new RateLimitService();
+

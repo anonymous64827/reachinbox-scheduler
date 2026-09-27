@@ -10,6 +10,11 @@ import { SlackIntegrationModal } from './components/SlackIntegrationModal';
 import { LoginView } from './components/LoginView';
 import { Plus, Calendar, CheckCircle2, RefreshCw } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
+import { SystemHealthBar } from './components/SystemHealthBar';
+import { DeliveryFlowVisualizer } from './components/DeliveryFlowVisualizer';
+import { SenderCapacityGauge } from './components/SenderCapacityGauge';
+import { ActivityLogStream } from './components/ActivityLogStream';
+import { JobDetailDrawer } from './components/JobDetailDrawer';
 
 export const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -18,9 +23,13 @@ export const App: React.FC = () => {
   // Tabs
   const [activeTab, setActiveTab] = useState<'scheduled' | 'sent'>('scheduled');
 
-  // Modals
+  // Modals & Drawer
   const [isComposeOpen, setIsComposeOpen] = useState(false);
   const [isSlackModalOpen, setIsSlackModalOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  // Selected job for Flow Visualizer & Inspector Drawer
+  const [selectedJob, setSelectedJob] = useState<EmailJob | null>(null);
 
   // Data states
   const [scheduledEmails, setScheduledEmails] = useState<EmailJob[]>([]);
@@ -79,19 +88,37 @@ export const App: React.FC = () => {
         const statusFilter = activeTab === 'scheduled' ? 'SCHEDULED' : 'SENT';
         const data = await api.searchEmails({ q: searchQuery.trim(), status: statusFilter });
         setSearchSource(data.source);
+        const items = data.items;
         if (activeTab === 'scheduled') {
-          setScheduledEmails(data.items);
+          setScheduledEmails(items);
         } else {
-          setSentEmails(data.items);
+          setSentEmails(items);
         }
+        setSelectedJob((prev) => {
+          if (!prev) return items[0] || null;
+          const found = items.find((j) => j.id === prev.id);
+          return found || prev;
+        });
       } else {
         setSearchSource('');
         if (activeTab === 'scheduled') {
           const data = await api.getScheduledEmails();
-          setScheduledEmails(data.items);
+          const items = data.items;
+          setScheduledEmails(items);
+          setSelectedJob((prev) => {
+            if (!prev) return items[0] || null;
+            const found = items.find((j) => j.id === prev.id);
+            return found || prev;
+          });
         } else {
           const data = await api.getSentEmails();
-          setSentEmails(data.items);
+          const items = data.items;
+          setSentEmails(items);
+          setSelectedJob((prev) => {
+            if (!prev) return items[0] || null;
+            const found = items.find((j) => j.id === prev.id);
+            return found || prev;
+          });
         }
       }
     } catch (err: any) {
@@ -173,9 +200,12 @@ export const App: React.FC = () => {
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* Real-time System Infrastructure Health Bar */}
+        <SystemHealthBar />
+
         {/* Header Hero Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
               Email Outreach Engine
@@ -195,11 +225,27 @@ export const App: React.FC = () => {
           </button>
         </div>
 
+        {/* Signature Experience: Live Delivery Flow State Machine Visualizer */}
+        <DeliveryFlowVisualizer
+          job={selectedJob}
+          onOpenTelemetry={() => setIsDrawerOpen(true)}
+        />
+
+        {/* Operational Infrastructure Overview: Rate Limit Quota & Live Activity Telemetry */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1">
+            <SenderCapacityGauge senders={senders} onRefresh={fetchGlobalData} />
+          </div>
+          <div className="lg:col-span-2">
+            <ActivityLogStream />
+          </div>
+        </div>
+
         {/* Stats Overview */}
         <StatsOverview stats={stats} onRefresh={fetchGlobalData} />
 
         {/* Navigation Tabs */}
-        <div className="flex items-center space-x-2 border-b border-slate-800 pb-3 mb-6">
+        <div className="flex items-center space-x-2 border-b border-slate-800 pb-3">
           <button
             onClick={() => {
               setActiveTab('scheduled');
@@ -247,6 +293,8 @@ export const App: React.FC = () => {
             onCancelEmail={handleCancelEmail}
             onRefresh={fetchEmails}
             searchSource={searchSource}
+            onSelectJob={(job) => setSelectedJob(job)}
+            selectedJobId={selectedJob?.id}
           />
         ) : (
           <SentEmailsTable
@@ -256,9 +304,18 @@ export const App: React.FC = () => {
             onSearchChange={setSearchQuery}
             onRefresh={fetchEmails}
             searchSource={searchSource}
+            onSelectJob={(job) => setSelectedJob(job)}
+            selectedJobId={selectedJob?.id}
           />
         )}
       </main>
+
+      {/* Slide-over Job Telemetry Inspector Drawer */}
+      <JobDetailDrawer
+        job={selectedJob}
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+      />
 
       {/* Compose Email Modal */}
       <ComposeEmailModal

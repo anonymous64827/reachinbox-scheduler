@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { Sender } from '../types';
+import { Sender, CsvDiagnostics } from '../types';
 import { api } from '../services/api';
-import { X, UploadCloud, FileText, Clock, Send, Sparkles, Check, AlertCircle, Layers } from 'lucide-react';
+import { X, UploadCloud, FileText, Clock, Send, Sparkles, Check, AlertTriangle, Eye, Edit3, ShieldAlert, Cpu } from 'lucide-react';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
 
@@ -29,6 +29,9 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
     'demo.lead2@outboxlabs.com',
     'sarah.growth@venture.io',
   ]);
+  const [diagnostics, setDiagnostics] = useState<CsvDiagnostics | null>(null);
+
+  const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const [startTimeMode, setStartTimeMode] = useState<'now' | 'custom'>('now');
   const [customStartTime, setCustomStartTime] = useState('');
   const [delaySeconds, setDelaySeconds] = useState<number>(2);
@@ -40,15 +43,49 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
 
   if (!isOpen) return null;
 
+  const currentSenderObj = senders.find((s) => s.email === selectedSender) || senders[0];
+  const remainingQuota = currentSenderObj?.remaining ?? (currentSenderObj?.hourlyLimit || 50);
+
   // Real-time parser for textarea changes
   const handleLeadsTextChange = (text: string) => {
     setLeadsText(text);
-    const matches = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || [];
-    const unique = Array.from(new Set(matches.map((e) => e.toLowerCase())));
-    setDetectedEmails(unique);
+    const rawTokens = text.split(/[\r\n,;]+/).map((t) => t.trim()).filter(Boolean);
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const valid: string[] = [];
+    const duplicates: string[] = [];
+    const invalid: string[] = [];
+    const seen = new Set<string>();
+
+    for (const t of rawTokens) {
+      const clean = t.replace(/["'<>]/g, '').trim();
+      if (!clean) continue;
+      if (emailRegex.test(clean)) {
+        const lower = clean.toLowerCase();
+        if (seen.has(lower)) {
+          duplicates.push(lower);
+        } else {
+          seen.add(lower);
+          valid.push(lower);
+        }
+      } else {
+        if (!['email', 'emails', 'recipient', 'contact'].includes(clean.toLowerCase())) {
+          invalid.push(clean);
+        }
+      }
+    }
+
+    setDetectedEmails(valid);
+    setDiagnostics({
+      totalEvaluated: rawTokens.length,
+      validCount: valid.length,
+      duplicateCount: duplicates.length,
+      invalidCount: invalid.length,
+      sample: valid.slice(0, 5),
+      emails: valid,
+    });
   };
 
-  // File Upload parser
+  // File Upload parser with deep diagnostics
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -56,10 +93,11 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
     setParsing(true);
     try {
       const data = await api.parseCsv(file);
+      setDiagnostics(data);
       if (data.emails && data.emails.length > 0) {
         setDetectedEmails(data.emails);
         setLeadsText(data.emails.join('\n'));
-        toast.success(`Parsed ${data.emails.length} unique leads from ${file.name}`);
+        toast.success(`Intake: ${data.validCount} valid leads detected (${data.duplicateCount} duplicates filtered)`);
       } else {
         toast.error('No valid email addresses found in the uploaded file.');
       }
@@ -73,10 +111,21 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
   const setPresetSchedule = (minutesFromNow: number) => {
     setStartTimeMode('custom');
     const date = new Date(Date.now() + minutesFromNow * 60 * 1000);
-    // Format to YYYY-MM-DDTHH:mm for datetime-local input
     const localIso = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     setCustomStartTime(localIso);
   };
+
+  // Calculate Dispatch Projection
+  const totalLeads = detectedEmails.length;
+  const totalDurationSeconds = totalLeads > 1 ? (totalLeads - 1) * delaySeconds : 0;
+  const durationMinutes = Math.floor(totalDurationSeconds / 60);
+  const durationRemainingSeconds = totalDurationSeconds % 60;
+  const durationFormatted = durationMinutes > 0
+    ? `${durationMinutes}m ${durationRemainingSeconds}s`
+    : `${totalDurationSeconds}s`;
+
+  const willRollover = totalLeads > remainingQuota;
+  const rolloverCount = Math.max(0, totalLeads - remainingQuota);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,17 +188,22 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl max-h-[92vh] flex flex-col bg-[#0f172a] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden text-slate-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-3xl max-h-[94vh] flex flex-col bg-[#0b1120] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden text-slate-100">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/60">
+        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/70">
           <div className="flex items-center space-x-2.5">
-            <div className="w-9 h-9 rounded-xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center">
-              <Sparkles className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center">
+              <Cpu className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white tracking-tight">Compose & Schedule Campaign</h3>
-              <p className="text-xs text-slate-400">Configure BullMQ delayed jobs, throttling, and hourly thresholds</p>
+              <div className="flex items-center space-x-2">
+                <h3 className="text-base font-bold text-white tracking-tight">Campaign Dispatch Command Center</h3>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800">
+                  BullMQ Throttling Engine
+                </span>
+              </div>
+              <p className="text-xs text-slate-400">Configure delayed queue jobs, provider throttling, and hourly thresholds</p>
             </div>
           </div>
           <button
@@ -162,11 +216,16 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
 
         {/* Modal Form */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
-          {/* Sender Select */}
+          {/* Sender Select with Live Quota */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              From (Sender Mailbox)
-            </label>
+            <div className="flex justify-between items-center mb-1.5">
+              <label className="text-xs font-semibold text-slate-300">
+                From (Sender Mailbox)
+              </label>
+              <span className="text-[11px] font-mono text-indigo-400">
+                Remaining Quota: <strong>{remainingQuota} slots</strong> this hour
+              </span>
+            </div>
             <select
               value={selectedSender}
               onChange={(e) => {
@@ -193,46 +252,84 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
               type="text"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="e.g. Accelerating your outbound email growth at scale"
+              placeholder="e.g. Accelerating outbound revenue at scale"
               className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
               required
             />
           </div>
 
-          {/* Body */}
+          {/* Body with Edit / Live Preview Tabs */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Email Message Body
-            </label>
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={4}
-              placeholder="Write your email template here..."
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono leading-relaxed"
-              required
-            />
-          </div>
-
-          {/* Leads Upload & Paste Section */}
-          <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-semibold text-slate-300 flex items-center space-x-1.5">
-                <FileText className="w-4 h-4 text-indigo-400" />
-                <span>Recipient Leads (CSV, TXT, or Paste)</span>
+            <div className="flex justify-between items-center mb-1.5">
+              <label className="text-xs font-semibold text-slate-300">
+                Email Message Body
               </label>
-
-              {/* Detected Counter */}
-              <div className="flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 text-[11px] font-semibold">
-                <Check className="w-3 h-3 text-indigo-400" />
-                <span>{detectedEmails.length} Leads Detected</span>
+              <div className="flex space-x-1 bg-slate-950 p-0.5 rounded-lg border border-slate-800 text-[10px] font-mono">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('edit')}
+                  className={`flex items-center space-x-1 px-2.5 py-0.5 rounded ${activeTab === 'edit' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                >
+                  <Edit3 className="w-3 h-3" />
+                  <span>Editor</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('preview')}
+                  className={`flex items-center space-x-1 px-2.5 py-0.5 rounded ${activeTab === 'preview' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                >
+                  <Eye className="w-3 h-3" />
+                  <span>Rendered Preview</span>
+                </button>
               </div>
             </div>
 
-            {/* Drag & Drop / File Input */}
+            {activeTab === 'edit' ? (
+              <textarea
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                rows={4}
+                placeholder="Write your email template here..."
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono leading-relaxed"
+                required
+              />
+            ) : (
+              <div className="w-full bg-slate-950 border border-slate-700 rounded-xl p-4 text-xs text-slate-300 font-sans whitespace-pre-wrap leading-relaxed min-h-[96px] border-l-4 border-l-indigo-500">
+                {body || <span className="text-slate-600 italic">No message content entered yet.</span>}
+              </div>
+            )}
+          </div>
+
+          {/* Leads Intake & Diagnostics */}
+          <div className="bg-slate-950/70 p-4 rounded-xl border border-slate-800 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label className="text-xs font-semibold text-slate-300 flex items-center space-x-1.5">
+                <FileText className="w-4 h-4 text-indigo-400" />
+                <span>Recipient Leads Intake</span>
+              </label>
+
+              {/* Real-time Diagnostics Pills */}
+              <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-mono">
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+                  {detectedEmails.length} Valid Leads
+                </span>
+                {diagnostics && diagnostics.duplicateCount > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold">
+                    {diagnostics.duplicateCount} Duplicates Filtered
+                  </span>
+                )}
+                {diagnostics && diagnostics.invalidCount > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 font-bold">
+                    {diagnostics.invalidCount} Invalid Skipped
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Drag & Drop Upload */}
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="border border-dashed border-slate-700 hover:border-indigo-500 bg-slate-900/40 hover:bg-slate-900/80 rounded-xl p-3 text-center cursor-pointer transition-colors mb-3 group"
+              className="border border-dashed border-slate-700 hover:border-indigo-500 bg-slate-900/40 hover:bg-slate-900/80 rounded-xl p-3 text-center cursor-pointer transition-colors group"
             >
               <input
                 ref={fileInputRef}
@@ -243,15 +340,15 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
               />
               <div className="flex items-center justify-center space-x-2 text-xs text-slate-400 group-hover:text-indigo-300">
                 <UploadCloud className="w-4 h-4 text-indigo-400" />
-                <span>{parsing ? 'Parsing uploaded file...' : 'Click to upload leads file (.csv, .txt)'}</span>
+                <span>{parsing ? 'Parsing leads...' : 'Upload CSV / TXT of leads (auto-parsed & deduplicated)'}</span>
               </div>
             </div>
 
-            {/* Paste Textarea */}
+            {/* Leads Text Input */}
             <textarea
               value={leadsText}
               onChange={(e) => handleLeadsTextChange(e.target.value)}
-              rows={3}
+              rows={2}
               placeholder="Paste email addresses here (one per line, comma or space separated)..."
               className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-600 font-mono focus:outline-none focus:border-indigo-500"
             />
@@ -262,7 +359,7 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
             {/* Start Time */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Start Time
+                Dispatch Start Time
               </label>
               <div className="space-y-2">
                 <div className="flex rounded-lg overflow-hidden border border-slate-800 p-0.5 bg-slate-950">
@@ -286,7 +383,7 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
                         : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    Later
+                    Scheduled
                   </button>
                 </div>
 
@@ -329,7 +426,7 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
 
             {/* Delay Between Sends */}
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5" title="Delay between sending consecutive emails">
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                 Delay Between Sends
               </label>
               <div className="relative">
@@ -346,13 +443,13 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
                   sec
                 </span>
               </div>
-              <p className="text-[10px] text-slate-500 mt-1">Min 2s recommended</p>
+              <p className="text-[10px] text-slate-500 mt-1">Provider throttling delay</p>
             </div>
 
             {/* Hourly Rate Limit */}
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5" title="Maximum emails allowed per hour for this sender">
-                Hourly Rate Limit
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Hourly Limit (Cap)
               </label>
               <div className="relative">
                 <input
@@ -368,8 +465,42 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
                   / hr
                 </span>
               </div>
-              <p className="text-[10px] text-slate-500 mt-1">Triggers Slack alert</p>
+              <p className="text-[10px] text-slate-500 mt-1">Triggers Slack notification</p>
             </div>
+          </div>
+
+          {/* Dispatch Plan Projection Box */}
+          <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono space-y-1.5">
+            <div className="text-[10px] uppercase font-bold text-slate-400">
+              Dispatch Plan Projection
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+              <div>
+                <span className="text-slate-500">Total Jobs:</span>
+                <div className="font-bold text-slate-200">{totalLeads} recipients</div>
+              </div>
+              <div>
+                <span className="text-slate-500">Throttling:</span>
+                <div className="font-bold text-indigo-300">{delaySeconds}s / email</div>
+              </div>
+              <div>
+                <span className="text-slate-500">Estimated Duration:</span>
+                <div className="font-bold text-slate-200">{durationFormatted}</div>
+              </div>
+              <div>
+                <span className="text-slate-500">Window Consumption:</span>
+                <div className="font-bold text-slate-200">{totalLeads} / {hourlyLimit}</div>
+              </div>
+            </div>
+
+            {willRollover && (
+              <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center space-x-2 text-[11px] text-amber-400">
+                <ShieldAlert className="w-4 h-4 shrink-0" />
+                <span>
+                  Notice: Batch ({totalLeads}) exceeds remaining quota ({remainingQuota}). First {remainingQuota} will dispatch now; remaining {rolloverCount} will cleanly rollover to next hour window with a Slack alert.
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Footer Submit */}
@@ -384,10 +515,10 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
             <button
               type="submit"
               disabled={submitting || detectedEmails.length === 0}
-              className="flex items-center space-x-2 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold text-xs shadow-lg shadow-indigo-600/30 transition-all cursor-pointer"
+              className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold text-xs shadow-lg shadow-indigo-600/30 transition-all cursor-pointer"
             >
               <Send className="w-4 h-4" />
-              <span>{submitting ? 'Scheduling in BullMQ...' : `Schedule ${detectedEmails.length} Email(s)`}</span>
+              <span>{submitting ? 'Enqueuing into BullMQ...' : `Schedule ${detectedEmails.length} Email(s)`}</span>
             </button>
           </div>
         </form>

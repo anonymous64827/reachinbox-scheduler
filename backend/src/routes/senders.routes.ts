@@ -16,10 +16,15 @@ router.get('/', async (_req: Request, res: Response) => {
 
     const sendersWithUsage = await Promise.all(
       senders.map(async (sender) => {
-        const usage = await rateLimitService.getCurrentHourUsage(sender.email);
+        const capacity = await rateLimitService.getSenderCapacityStatus(sender.email);
         return {
           ...sender,
-          currentHourCount: usage.count,
+          currentHourCount: capacity.count,
+          remaining: capacity.remaining,
+          percentUsed: capacity.percentUsed,
+          isRateLimited: capacity.isRateLimited,
+          nextWindowTime: capacity.nextWindowTime,
+          slackAlertSent: capacity.slackAlertSent,
         };
       })
     );

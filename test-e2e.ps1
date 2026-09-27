@@ -10,10 +10,10 @@ $baseUrl = "http://localhost:5000"
 Write-Host "`n[1/7] Testing Health Check & Services..." -ForegroundColor Yellow
 $health = Invoke-RestMethod -Uri "$baseUrl/api/health" -Method Get
 Write-Host "✅ Health Status: $($health.status)" -ForegroundColor Green
-Write-Host "   Redis: $($health.services.redis)"
-Write-Host "   Database: $($health.services.database)"
-Write-Host "   Ethereal SMTP: $($health.services.etherealSmtp)"
-Write-Host "   Search Engine: $($health.services.elasticsearch)"
+Write-Host "   Redis: $($health.services.redis.status) ($($health.services.redis.latencyMs)ms latency)"
+Write-Host "   Database: $($health.services.database.status) ($($health.services.database.latencyMs)ms latency)"
+Write-Host "   SMTP: $($health.services.smtp.status) - $($health.services.smtp.provider)"
+Write-Host "   Search Engine: $($health.services.elasticsearch.status)"
 
 # 2. Bull Board Check
 Write-Host "`n[2/7] Verifying BullMQ Live Dashboard..." -ForegroundColor Yellow

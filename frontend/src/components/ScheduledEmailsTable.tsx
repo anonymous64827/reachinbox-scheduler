@@ -11,6 +11,8 @@ interface ScheduledEmailsTableProps {
   onCancelEmail: (id: string) => void;
   onRefresh: () => void;
   searchSource?: string;
+  onSelectJob?: (job: EmailJob) => void;
+  selectedJobId?: string;
 }
 
 export const ScheduledEmailsTable: React.FC<ScheduledEmailsTableProps> = ({
@@ -21,6 +23,8 @@ export const ScheduledEmailsTable: React.FC<ScheduledEmailsTableProps> = ({
   onCancelEmail,
   onRefresh,
   searchSource,
+  onSelectJob,
+  selectedJobId,
 }) => {
   const getStatusBadge = (status: EmailJob['status']) => {
     switch (status) {
@@ -157,10 +161,16 @@ export const ScheduledEmailsTable: React.FC<ScheduledEmailsTableProps> = ({
             ) : (
               emails.map((job) => {
                 const timeInfo = formatScheduledTime(job.scheduledTime);
+                const isSelected = selectedJobId === job.id;
                 return (
                   <tr
                     key={job.id}
-                    className="hover:bg-slate-800/30 transition-colors group"
+                    onClick={() => onSelectJob?.(job)}
+                    className={`transition-colors cursor-pointer group ${
+                      isSelected
+                        ? 'bg-indigo-950/40 border-l-2 border-indigo-500'
+                        : 'hover:bg-slate-800/40 border-l-2 border-transparent'
+                    }`}
                   >
                     {/* Recipient */}
                     <td className="py-4 px-6">
@@ -168,7 +178,9 @@ export const ScheduledEmailsTable: React.FC<ScheduledEmailsTableProps> = ({
                         <div className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold text-[11px]">
                           {job.toEmail[0].toUpperCase()}
                         </div>
-                        <span className="font-semibold text-white">{job.toEmail}</span>
+                        <span className="font-semibold text-white group-hover:text-indigo-300 transition-colors">
+                          {job.toEmail}
+                        </span>
                       </div>
                     </td>
 
@@ -207,13 +219,28 @@ export const ScheduledEmailsTable: React.FC<ScheduledEmailsTableProps> = ({
 
                     {/* Actions */}
                     <td className="py-4 px-6 text-right">
-                      <button
-                        onClick={() => onCancelEmail(job.id)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
-                        title="Cancel this scheduled email"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-end space-x-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectJob?.(job);
+                          }}
+                          className="px-2 py-1 rounded text-[11px] font-medium bg-slate-800 hover:bg-indigo-600/30 text-slate-300 hover:text-indigo-300 border border-slate-700/60 transition-colors"
+                          title="Inspect job telemetry & pipeline lifecycle"
+                        >
+                          Inspect
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onCancelEmail(job.id);
+                          }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                          title="Cancel this scheduled email"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

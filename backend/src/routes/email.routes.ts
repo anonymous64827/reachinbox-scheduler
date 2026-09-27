@@ -4,6 +4,7 @@ import { prisma } from '../config/db';
 import { scheduleBullMQJob, removeBullMQJob, emailQueue } from '../queues/email.queue';
 import { elasticsearchService } from '../services/elasticsearch.service';
 import { optionalAuth, AuthenticatedRequest } from '../middleware/auth.middleware';
+import { activityService } from '../services/activity.service';
 import { z } from 'zod';
 
 const router = Router();
@@ -43,6 +44,15 @@ router.post('/schedule', optionalAuth, async (req: AuthenticatedRequest, res: Re
     const effectiveStartTime = Math.max(now, baseStartTime);
 
     const createdJobs = [];
+
+    // Record Batch Schedule Activity Event
+    await activityService.record({
+      level: 'info',
+      type: 'JOB_SCHEDULED',
+      sender: senderEmail,
+      message: `Enqueued batch of ${toEmails.length} lead(s) for sender ${senderEmail} (Provider throttling: ${delaySeconds}s, Hourly limit: ${hourlyLimit})`,
+      metadata: { totalLeads: toEmails.length, delaySeconds, hourlyLimit, start: new Date(effectiveStartTime).toISOString() },
+    });
 
     // Schedule each lead with consecutive spacing based on delaySeconds
     for (let i = 0; i < toEmails.length; i++) {
@@ -101,7 +111,7 @@ router.post('/schedule', optionalAuth, async (req: AuthenticatedRequest, res: Re
 
     return res.status(201).json({
       success: true,
-      message: `Successfully scheduled ${createdJobs.length} email job(s).`,
+      message: `Successfully scheduled ${createdJobs.length} email job(s) into BullMQ.`,
       count: createdJobs.length,
       jobs: createdJobs,
     });
@@ -240,6 +250,16 @@ router.delete('/:id', optionalAuth, async (req: AuthenticatedRequest, res: Respo
     // Update Elasticsearch
     await elasticsearchService.updateEmailStatus(id, { status: 'CANCELLED' });
 
+    // Record Activity
+    await activityService.record({
+      level: 'warn',
+      type: 'JOB_CANCELLED',
+      jobId: id,
+      recipient: record.toEmail,
+      sender: record.senderEmail,
+      message: `Job ${id.substring(0, 8)}... for ${record.toEmail} cancelled by operator`,
+    });
+
     return res.json({ success: true, message: 'Email cancelled successfully', job: updated });
   } catch (error: any) {
     return res.status(500).json({ error: error.message });
@@ -247,7 +267,57 @@ router.delete('/:id', optionalAuth, async (req: AuthenticatedRequest, res: Respo
 });
 
 /**
- * 6. Parse CSV / Text file of email leads
+ * 6. Live Activity Telemetry Stream
+ */
+router.get('/activity', async (_req, res: Response) => {
+  try {
+    const events = await activityService.getRecent(35);
+    return res.json(events);
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * 7. Single Job Telemetry & Lifecycle Trace
+ */
+router.get('/telemetry/:id', async (req: any, res: Response) => {
+  try {
+    const { id } = req.params;
+    const record = await prisma.emailJob.findUnique({ where: { id } });
+    if (!record) return res.status(404).json({ error: 'Job not found' });
+
+    const bullJob = await emailQueue.getJob(`email-${id}`).catch(() => null);
+    let bullState = 'purged_or_completed';
+    if (bullJob) {
+      bullState = await bullJob.getState().catch(() => 'unknown');
+    }
+
+    return res.json({
+      jobRecord: record,
+      bullmq: {
+        jobId: bullJob?.id || `email-${id}`,
+        state: bullState,
+        attemptsMade: bullJob?.attemptsMade || record.attempts,
+        delayMs: bullJob?.opts.delay || 0,
+      },
+      lifecycle: {
+        created: record.createdAt,
+        scheduled: record.scheduledTime,
+        sent: record.sentTime,
+        status: record.status,
+        durationMs: record.sentTime
+          ? new Date(record.sentTime).getTime() - new Date(record.scheduledTime).getTime()
+          : null,
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * 8. Parse CSV / Text file of email leads with deep diagnostics
  */
 router.post('/parse-csv', upload.single('file'), async (req: any, res: Response) => {
   try {
@@ -261,17 +331,50 @@ router.post('/parse-csv', upload.single('file'), async (req: any, res: Response)
       return res.status(400).json({ error: 'Please upload a CSV/text file or provide raw text of email leads' });
     }
 
-    // Extract all emails using regex matching
-    const emailMatches = content.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || [];
-    
-    // Normalize and de-duplicate
-    const uniqueEmails = Array.from(new Set(emailMatches.map((e) => e.toLowerCase())));
+    // Split into raw tokens/lines
+    const rawTokens = content
+      .split(/[\r\n,;]+/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+    const validEmails: string[] = [];
+    const duplicates: string[] = [];
+    const invalidEntries: string[] = [];
+    const seen = new Set<string>();
+
+    for (const token of rawTokens) {
+      // Clean quotes, brackets
+      const clean = token.replace(/["'<>]/g, '').trim();
+      if (!clean) continue;
+
+      if (emailRegex.test(clean)) {
+        const lower = clean.toLowerCase();
+        if (seen.has(lower)) {
+          duplicates.push(lower);
+        } else {
+          seen.add(lower);
+          validEmails.push(lower);
+        }
+      } else {
+        // Only count if it's not a common CSV header like "email" or "email_address"
+        if (!['email', 'emails', 'recipient', 'contact', 'mail'].includes(clean.toLowerCase())) {
+          invalidEntries.push(clean);
+        }
+      }
+    }
 
     return res.json({
       success: true,
-      count: uniqueEmails.length,
-      sample: uniqueEmails.slice(0, 10),
-      emails: uniqueEmails,
+      totalEvaluated: rawTokens.length,
+      validCount: validEmails.length,
+      duplicateCount: duplicates.length,
+      invalidCount: invalidEntries.length,
+      sample: validEmails.slice(0, 8),
+      emails: validEmails,
+      diagnostics: {
+        duplicatesSample: duplicates.slice(0, 5),
+        invalidSample: invalidEntries.slice(0, 5),
+      },
     });
   } catch (error: any) {
     return res.status(500).json({ error: 'Failed to parse file: ' + error.message });

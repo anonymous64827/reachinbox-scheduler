@@ -32,6 +32,11 @@ export interface Sender {
   hourlyLimit: number;
   active: boolean;
   currentHourCount: number;
+  remaining?: number;
+  percentUsed?: number;
+  isRateLimited?: boolean;
+  nextWindowTime?: string;
+  slackAlertSent?: boolean;
 }
 
 export interface SlackStatus {
@@ -70,4 +75,71 @@ export interface ScheduleEmailPayload {
   startTime: string;
   delaySeconds: number;
   hourlyLimit: number;
+}
+
+export interface ActivityEvent {
+  id: string;
+  timestamp: string;
+  level: 'info' | 'warn' | 'error' | 'success';
+  type: 
+    | 'JOB_SCHEDULED'
+    | 'WORKER_ACQUIRED'
+    | 'RATE_LIMIT_CHECK'
+    | 'RATE_LIMIT_DEFERRED'
+    | 'SLACK_NOTIFIED'
+    | 'SMTP_DISPATCHING'
+    | 'EMAIL_DELIVERED'
+    | 'JOB_RETRY'
+    | 'JOB_CANCELLED'
+    | 'SYSTEM_RECONCILE';
+  jobId?: string;
+  sender?: string;
+  recipient?: string;
+  message: string;
+  metadata?: Record<string, any>;
+}
+
+export interface CsvDiagnostics {
+  totalEvaluated: number;
+  validCount: number;
+  duplicateCount: number;
+  invalidCount: number;
+  sample: string[];
+  emails: string[];
+  diagnostics?: {
+    duplicatesSample: string[];
+    invalidSample: string[];
+  };
+}
+
+export interface JobTelemetry {
+  jobRecord: EmailJob;
+  bullmq: {
+    jobId: string;
+    state: string;
+    attemptsMade: number;
+    delayMs: number;
+  };
+  lifecycle: {
+    created: string;
+    scheduled: string;
+    sent: string | null;
+    status: string;
+    durationMs: number | null;
+  };
+}
+
+export interface SystemHealthData {
+  status: string;
+  uptimeSeconds: number;
+  timestamp: string;
+  services: {
+    redis: { status: string; latencyMs: number; host: string; port: number };
+    database: { status: string; latencyMs: number; type: string };
+    queue: { status: string; concurrency: number; minThrottlingSeconds: number; counts: any };
+    smtp: { status: string; provider: string; account: string };
+    elasticsearch: { status: string; node: string; fallbackMode: boolean };
+    slack: { status: string; channel: string | null };
+  };
+  bullBoardUrl: string;
 }

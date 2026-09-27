@@ -39,17 +39,72 @@ app.use('/api/emails', emailRoutes);
 app.use('/api/slack', slackRoutes);
 app.use('/api/senders', sendersRoutes);
 
-// Health check endpoint
+import { emailQueue } from './queues/email.queue';
+import { slackService } from './services/slack.service';
+import { prisma } from './config/db';
+
+// Health check endpoint with deep infrastructure telemetry
 app.get('/api/health', async (_req: Request, res: Response) => {
-  const redisPing = await redisClient.ping().catch(() => 'FAILED');
+  const t0 = Date.now();
+  let redisPing = 'FAILED';
+  let redisLatency = 0;
+  try {
+    const p0 = Date.now();
+    await redisClient.ping();
+    redisLatency = Date.now() - p0;
+    redisPing = 'PONG';
+  } catch {}
+
+  let dbStatus = 'DOWN';
+  let dbLatency = 0;
+  try {
+    const d0 = Date.now();
+    await prisma.$queryRaw`SELECT 1`;
+    dbLatency = Date.now() - d0;
+    dbStatus = 'UP';
+  } catch {}
+
+  const queueCounts = await emailQueue.getJobCounts('waiting', 'active', 'delayed', 'completed', 'failed').catch(() => null);
+  const slackConfig = await slackService.getConfig().catch(() => null);
+  const etherealInfo = etherealService.getAccountInfo();
+
   return res.json({
-    status: 'healthy',
+    status: redisPing === 'PONG' && dbStatus === 'UP' ? 'healthy' : 'degraded',
+    uptimeSeconds: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
     services: {
-      redis: redisPing === 'PONG' ? 'UP' : 'DOWN',
-      elasticsearch: elasticsearchService.isConnected ? 'UP' : 'OFFLINE_FALLBACK_ACTIVE',
-      database: 'UP',
-      etherealSmtp: 'UP',
+      redis: {
+        status: redisPing === 'PONG' ? 'UP' : 'DOWN',
+        latencyMs: redisLatency,
+        host: process.env.REDIS_HOST || '127.0.0.1',
+        port: parseInt(process.env.REDIS_PORT || '6379', 10),
+      },
+      database: {
+        status: dbStatus,
+        latencyMs: dbLatency,
+        type: process.env.DATABASE_URL?.includes('postgres') ? 'PostgreSQL' : 'SQLite (Prisma)',
+      },
+      queue: {
+        status: 'HEALTHY',
+        concurrency: parseInt(process.env.WORKER_CONCURRENCY || '5', 10),
+        minThrottlingSeconds: parseInt(process.env.MIN_DELAY_BETWEEN_EMAILS_SECONDS || '2', 10),
+        counts: queueCounts,
+      },
+      smtp: {
+        status: 'UP',
+        provider: 'Ethereal SMTP (Fake Transporter)',
+        account: etherealInfo?.user || 'Auto-Provisioned',
+      },
+      etherealSmtp: 'UP (Ethereal fake provider)',
+      elasticsearch: {
+        status: elasticsearchService.isConnected ? 'UP' : 'OFFLINE_FALLBACK_ACTIVE',
+        node: process.env.ELASTICSEARCH_NODE || 'http://localhost:9200',
+        fallbackMode: !elasticsearchService.isConnected,
+      },
+      slack: {
+        status: slackConfig?.webhookUrl ? 'CONNECTED' : 'DISCONNECTED_STANDBY',
+        channel: slackConfig?.channelName || null,
+      },
     },
     bullBoardUrl: `http://localhost:${PORT}/admin/queues`,
   });

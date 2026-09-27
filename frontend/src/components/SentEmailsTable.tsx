@@ -10,6 +10,8 @@ interface SentEmailsTableProps {
   onSearchChange: (q: string) => void;
   onRefresh: () => void;
   searchSource?: string;
+  onSelectJob?: (job: EmailJob) => void;
+  selectedJobId?: string;
 }
 
 export const SentEmailsTable: React.FC<SentEmailsTableProps> = ({
@@ -19,6 +21,8 @@ export const SentEmailsTable: React.FC<SentEmailsTableProps> = ({
   onSearchChange,
   onRefresh,
   searchSource,
+  onSelectJob,
+  selectedJobId,
 }) => {
   const formatSentTime = (isoString?: string | null) => {
     if (!isoString) return { relative: 'Recently', exact: '' };
@@ -122,11 +126,17 @@ export const SentEmailsTable: React.FC<SentEmailsTableProps> = ({
               emails.map((job) => {
                 const timeInfo = formatSentTime(job.sentTime);
                 const isSent = job.status === 'SENT';
+                const isSelected = selectedJobId === job.id;
 
                 return (
                   <tr
                     key={job.id}
-                    className="hover:bg-slate-800/30 transition-colors group"
+                    onClick={() => onSelectJob?.(job)}
+                    className={`transition-colors cursor-pointer group ${
+                      isSelected
+                        ? 'bg-indigo-950/40 border-l-2 border-indigo-500'
+                        : 'hover:bg-slate-800/40 border-l-2 border-transparent'
+                    }`}
                   >
                     {/* Recipient */}
                     <td className="py-4 px-6">
@@ -134,7 +144,9 @@ export const SentEmailsTable: React.FC<SentEmailsTableProps> = ({
                         <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold text-[11px]">
                           {job.toEmail[0].toUpperCase()}
                         </div>
-                        <span className="font-semibold text-white">{job.toEmail}</span>
+                        <span className="font-semibold text-white group-hover:text-emerald-300 transition-colors">
+                          {job.toEmail}
+                        </span>
                       </div>
                     </td>
 
@@ -176,21 +188,34 @@ export const SentEmailsTable: React.FC<SentEmailsTableProps> = ({
                       )}
                     </td>
 
-                    {/* Preview in Ethereal */}
+                    {/* Preview in Ethereal & Inspect */}
                     <td className="py-4 px-6 text-right">
-                      {job.etherealPreviewUrl ? (
-                        <a
-                          href={job.etherealPreviewUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600 hover:text-white border border-indigo-500/30 transition-all font-medium text-xs shadow-sm"
+                      <div className="flex items-center justify-end space-x-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectJob?.(job);
+                          }}
+                          className="px-2 py-1 rounded text-[11px] font-medium bg-slate-800 hover:bg-indigo-600/30 text-slate-300 hover:text-indigo-300 border border-slate-700/60 transition-colors"
+                          title="Inspect job telemetry & execution breakdown"
                         >
-                          <span>View Email</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      ) : (
-                        <span className="text-slate-600 text-xs italic">No preview</span>
-                      )}
+                          Inspect
+                        </button>
+                        {job.etherealPreviewUrl ? (
+                          <a
+                            href={job.etherealPreviewUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600 hover:text-white border border-indigo-500/30 transition-all font-medium text-xs shadow-sm"
+                          >
+                            <span>View Email</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : (
+                          <span className="text-slate-600 text-xs italic">No preview</span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
